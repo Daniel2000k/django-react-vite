@@ -11,12 +11,14 @@ function App() {
 
 
       <Routes>
-        <Route path="/" element={<Navigate to ="/tasks"/>} />  // cambio de pagina automatico 
+        <Route path="/" element={<Navigate to ="/tasks"/>} />  
         <Route path="/tasks" element={<Page1 />} /> 
         <Route path="/tasks-create" element={<Pageform />} /> 
+        <Route path="/tasks/:id" element={<Pageform />} /> 
       </Routes>
     </BrowserRouter>
   );
 }
 
 export default App;
+//id valor dinamico de cualquier tarea

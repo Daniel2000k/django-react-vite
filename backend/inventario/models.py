@@ -36,3 +36,14 @@ class Inventario(models.Model):
             self.producto.stock -= self.cantidad
         self.producto.save()
         super().save(*args, **kwargs)
+    
+    def delete(self, *args, **kwargs):
+    # Evitar modificar stock si el producto ya está siendo eliminado
+        if self.producto_id and Producto.objects.filter(id=self.producto_id).exists():
+            if self.tipo == 'ENTRADA':
+                self.producto.stock -= self.cantidad
+            elif self.tipo == 'SALIDA':
+                self.producto.stock += self.cantidad
+            self.producto.save()
+        super().delete(*args, **kwargs)
+
