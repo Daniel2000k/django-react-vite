@@ -30,7 +30,13 @@ class LoginSerializer(serializers.Serializer):
         email = data.get("email")
         password = data.get("password")
 
-        user = authenticate(email=email, password=password)
-        if user and user.is_active:
-            return user
+        # Buscar usuario por email y autenticar por username
+        try:
+            user = User.objects.get(email=email)
+            user_auth = authenticate(username=user.username, password=password)
+            if user_auth and user_auth.is_active:
+                return user_auth
+        except User.DoesNotExist:
+            pass
+        
         raise serializers.ValidationError("Credenciales inválidas.")

@@ -1,0 +1,121 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Inicio - Mi Tienda{% endblock %}
+
+{% block extra_css %}
+<style>
+    .home-content {
+        text-align: center;
+        width: 100%;
+        max-width: 600px;
+    }
+    
+    .welcome-section {
+        margin-bottom: 2rem;
+    }
+    
+    .welcome-section h1 {
+        color: #333;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .welcome-section p {
+        color: #666;
+        font-size: 1.1rem;
+    }
+    
+    .user-info {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        text-align: left;
+    }
+    
+    .user-info h3 {
+        color: #333;
+        margin-bottom: 1rem;
+    }
+    
+    .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .info-item:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        font-weight: 600;
+        color: #667eea;
+    }
+    
+    .info-value {
+        color: #333;
+    }
+    
+    .action-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .btn-secondary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.75rem;
+        border: none;
+        border-radius: 5px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .btn-secondary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="home-content">
+    <div class="welcome-section">
+        <h1>¡Bienvenido a Mi Tienda!</h1>
+        <p>Tu sesión ha sido iniciada correctamente</p>
+    </div>
+    
+    <div class="user-info">
+        <h3>Información de tu Cuenta</h3>
+        <div class="info-item">
+            <span class="info-label">Usuario:</span>
+            <span class="info-value">{{ user.username }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Correo:</span>
+            <span class="info-value">{{ user.email }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">ID:</span>
+            <span class="info-value">#{{ user.id }}</span>
+        </div>
+        <div class="info-item">
+            <span class="info-label">Miembro desde:</span>
+            <span class="info-value">{{ user.date_joined|date:"d/m/Y" }}</span>
+        </div>
+    </div>
+    
+    <div class="action-buttons">
+        <a href="#" class="btn-secondary">Perfil</a>
+        <a href="{% url 'logout' %}" class="btn-secondary" style="background: #dc3545; background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);">Cerrar Sesión</a>
+    </div>
+</div>
+{% endblock %}
