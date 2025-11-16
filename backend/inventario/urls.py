@@ -8,7 +8,9 @@ from .views import (
     alertas_lista, alerta_marcar_leida,
     # Nuevas vistas agregadas
     proveedor_editar, proveedor_eliminar, proveedor_detalle,
-    orden_detalle, orden_editar, orden_cancelar
+    orden_detalle, orden_editar, orden_cancelar,
+    # Vistas de ventas
+    venta_lista, venta_crear, venta_detalle
 )
 
 router = DefaultRouter()
@@ -46,6 +48,11 @@ urlpatterns = [
     # Alertas
     path('alertas/', alertas_lista, name='alertas_lista'),
     path('alertas/leida/<int:alerta_id>/', alerta_marcar_leida, name='alerta_marcar_leida'),
+
+    # Ventas
+    path('ventas/', venta_lista, name='venta_lista'),
+    path('ventas/crear/', venta_crear, name='venta_crear'),
+    path('ventas/<int:venta_id>/', venta_detalle, name='venta_detalle'),
 
     # API REST
     path('api/', include(router.urls)),

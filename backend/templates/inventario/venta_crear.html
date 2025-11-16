@@ -1,0 +1,41 @@
+{% extends "inventario/base.html" %}
+{% block title %}Nueva Venta{% endblock %}
+{% block page_title %}Registrar Venta{% endblock %}
+
+{% block content %}
+
+<form method="post" class="bg-white p-6 rounded-xl shadow max-w-3xl mx-auto">
+    {% csrf_token %}
+
+    <table class="w-full mb-6">
+        <thead class="bg-gray-100 border-b">
+            <tr>
+                <th class="px-4 py-2">Producto</th>
+                <th class="px-4 py-2">Precio</th>
+                <th class="px-4 py-2">Stock</th>
+                <th class="px-4 py-2">Cantidad</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in productos %}
+            <tr class="border-b">
+                <td class="px-4 py-2">{{ p.nombre }}</td>
+                <td class="px-4 py-2">${{ p.precio_venta }}</td>
+                <td class="px-4 py-2">{{ p.stock }}</td>
+                <td class="px-4 py-2">
+                    <input type="number" name="prod_{{ p.id }}" min="0" max="{{ p.stock }}"
+                           class="w-24 px-2 py-1 border rounded">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold">
+        💰 Registrar Venta
+    </button>
+
+</form>
+
+{% endblock %}

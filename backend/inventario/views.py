@@ -9,7 +9,8 @@ from .serializers import ProductoSerializer, InventarioSerializer
 
 from .models import (
     Producto, Inventario,
-    Proveedor, OrdenCompra, AlertaInventario
+    Proveedor, OrdenCompra, AlertaInventario,
+    Venta, DetalleVenta  # Nuevos modelos agregados
 )
 
 
@@ -359,3 +360,85 @@ def alerta_marcar_leida(request, alerta_id):
     alerta.leida = True
     alerta.save()
     return redirect('alertas_lista')
+
+# ===========================
+# VENTAS
+# ===========================
+
+@login_required(login_url='login')
+def venta_lista(request):
+    ventas = Venta.objects.all().order_by('-id')
+    return render(request, 'inventario/venta_lista.html', {'ventas': ventas})
+
+
+@login_required(login_url='login')
+def venta_crear(request):
+    productos = Producto.objects.all()
+
+    if request.method == 'POST':
+        items = []
+        total = 0
+
+        for key in request.POST:
+            if key.startswith("prod_"):
+                prod_id = key.split("_")[1]
+                valor = request.POST[key]
+
+                # Si el campo está vacío, lo ignoramos
+                if valor.strip() == "":
+                    continue
+
+                cantidad = int(valor)
+
+                if cantidad <= 0:
+                    continue
+
+                producto = Producto.objects.get(id=prod_id)
+
+                # Validación de stock
+                if cantidad > producto.stock:
+                    messages.error(request, f"Stock insuficiente para {producto.nombre}")
+                    return redirect('venta_crear')
+
+                subtotal = producto.precio_venta * cantidad
+                items.append((producto, cantidad, subtotal))
+                total += subtotal
+
+        if not items:
+            messages.error(request, "No seleccionaste productos")
+            return redirect('venta_crear')
+
+        # Crear venta
+        venta = Venta.objects.create(
+            total=total,
+            usuario=request.user
+        )
+
+        # Guardar detalles y descontar stock
+        for producto, cantidad, subtotal in items:
+            DetalleVenta.objects.create(
+                venta=venta,
+                producto=producto,
+                cantidad=cantidad,
+                precio_unitario=producto.precio_venta,
+                subtotal=subtotal
+            )
+
+            # DESCONTAR STOCK
+            Inventario.objects.create(
+                producto=producto,
+                tipo="SALIDA",
+                cantidad=cantidad,
+                numero_referencia=f"VENTA-{venta.id}"
+            )
+
+        messages.success(request, f"Venta #{venta.id} registrada correctamente")
+        return redirect('venta_detalle', venta_id=venta.id)
+
+    return render(request, 'inventario/venta_crear.html', {'productos': productos})
+
+
+@login_required(login_url='login')
+def venta_detalle(request, venta_id):
+    venta = get_object_or_404(Venta, id=venta_id)
+    return render(request, 'inventario/venta_detalle.html', {'venta': venta})
