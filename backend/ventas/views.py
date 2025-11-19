@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpResponse
-from django.contrib.auth.decorators import login_required, user_passes_test # Se añade user_passes_test
+from django.http import HttpResponse, HttpResponseForbidden
+from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Venta, DetalleVenta
 from inventario.models import Producto, Inventario
 from rest_framework import viewsets # opcional, si se planea usar viewsets aquí
@@ -16,9 +16,13 @@ from accounts.views import es_admin, es_cajero # Importar las funciones (aunque 
 # ==================== VENTAS ====================
 
 @login_required(login_url='login')
-@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login') # CORREGIDO: Usando nombre de ruta 'login'
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_lista(request):
-    """Mostrar listado de ventas, filtrando por usuario si no es ADMIN"""
+    """
+    Mostrar listado de ventas.
+    ADMIN ve TODAS las ventas.
+    CAJERO ve SOLO sus ventas (actúa como "Mis Ventas").
+    """
     user = request.user
 
     if user.rol == "ADMIN":
@@ -33,9 +37,9 @@ def venta_lista(request):
 
 
 @login_required(login_url='login')
-@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login') # CORREGIDO: Usando nombre de ruta 'login'
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_crear(request):
-    """Crear nueva venta"""
+    """Crear nueva venta (Solo ADMIN/CAJERO)."""
     productos = Producto.objects.all()
 
     if request.method == 'POST':
@@ -152,9 +156,9 @@ def venta_crear(request):
 
 
 @login_required(login_url='login')
-@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login') # CORREGIDO: Usando nombre de ruta 'login'
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_detalle(request, venta_id):
-    """Ver detalle de una venta, solo si es de ADMIN o si es su propia venta"""
+    """Ver detalle de una venta, solo si es de ADMIN o si es su propia venta."""
     venta = get_object_or_404(Venta, id=venta_id)
     
     # Restricción adicional: si no es ADMIN, solo puede ver sus propias ventas
@@ -167,16 +171,20 @@ def venta_detalle(request, venta_id):
 
 # ==================== FACTURA PDF ====================
 
-@login_required(login_url='login') # Solo requiere estar logueado
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login') # Añadir restricción de rol
 def venta_factura_pdf(request, venta_id):
-    """Generar factura de venta en PDF"""
+    """
+    Generar factura de venta en PDF.
+    Solo accesible por ADMIN o el CAJERO que realizó la venta.
+    """
     venta = get_object_or_404(Venta, id=venta_id)
 
-    # Restricción adicional antes de generar el PDF:
-    # Solo permite si es ADMIN o si es su propia venta
+    # Restricción: Solo permite si es ADMIN o si es su propia venta
     if request.user.rol != "ADMIN" and venta.usuario != request.user:
           messages.error(request, "No tienes permiso para generar la factura de esta venta.")
-          return redirect('venta_lista')
+          # Cambiado a HttpResponseForbidden para una respuesta HTTP más apropiada
+          return HttpResponseForbidden("No tienes permiso para generar la factura de esta venta.")
 
 
     response = HttpResponse(content_type='application/pdf')
@@ -232,3 +240,14 @@ def venta_factura_pdf(request, venta_id):
     p.save()
 
     return response
+
+# ==================== MIS VENTAS (Agregado) ====================
+
+@login_required
+def mis_ventas(request):
+    """
+    Vista simple para mostrar solo las ventas realizadas por el usuario actual.
+    (Nota: Esta lógica está cubierta por venta_lista para el rol CAJERO).
+    """
+    ventas = Venta.objects.filter(usuario=request.user).order_by('-fecha')
+    return render(request, 'ventas/mis_ventas.html', {"ventas": ventas})

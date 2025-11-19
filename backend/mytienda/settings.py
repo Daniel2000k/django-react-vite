@@ -36,6 +36,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 🌟 Mejora Solicitada
+    'mytienda.middleware.role_menu.RoleMenuMiddleware',
 ]
 
 ROOT_URLCONF = 'mytienda.urls'
