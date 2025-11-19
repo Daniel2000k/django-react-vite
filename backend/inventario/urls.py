@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     ProductoViewSet, InventarioViewSet,
-    inventario_dashboard, producto_lista, producto_crear, inventario_movimiento,
+    inventario_dashboard, producto_lista, producto_crear, producto_editar, producto_eliminar, inventario_movimiento,
     proveedor_lista, proveedor_crear,
     orden_lista, orden_crear, orden_recibir,
     alertas_lista, alerta_marcar_leida,
@@ -25,6 +25,8 @@ urlpatterns = [
     # Productos
     path('productos/', producto_lista, name='producto_lista'),
     path('productos/crear/', producto_crear, name='producto_crear'),
+    path('productos/<int:producto_id>/editar/', producto_editar, name='producto_editar'),
+    path('productos/<int:producto_id>/eliminar/', producto_eliminar, name='producto_eliminar'),
     path('productos/verificar-codigo/', verificar_codigo_producto, name='verificar_codigo_producto'),
 
     # Movimientos

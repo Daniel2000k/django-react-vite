@@ -21,8 +21,9 @@ class Producto(models.Model):
     codigo = models.IntegerField(unique=True)
     nombre = models.CharField(max_length=100)
     stock = models.IntegerField(default=0)
-    precio_compra = models.DecimalField(max_digits=10, decimal_places=3)
-    precio_venta = models.DecimalField(max_digits=10, decimal_places=3)
+    precio_compra = models.DecimalField(max_digits=15, decimal_places=3)
+    precio_venta = models.DecimalField(max_digits=15, decimal_places=3)
+    activo = models.BooleanField(default=True)  # Para desactivar sin eliminar
 
     def __str__(self):
         return f"{self.nombre} ({self.codigo})"
@@ -42,8 +43,8 @@ class OrdenCompra(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name="ordenes_compra")
 
     cantidad = models.IntegerField()
-    costo_unitario = models.DecimalField(max_digits=10, decimal_places=3)
-    subtotal = models.DecimalField(max_digits=12, decimal_places=3)
+    costo_unitario = models.DecimalField(max_digits=15, decimal_places=3)
+    subtotal = models.DecimalField(max_digits=15, decimal_places=3)
 
     estado = models.CharField(max_length=20, choices=ESTADOS, default='PENDIENTE')
     fecha_creacion = models.DateTimeField(default=timezone.now)

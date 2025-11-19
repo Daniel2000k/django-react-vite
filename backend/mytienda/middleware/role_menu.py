@@ -10,17 +10,24 @@ class RoleMenuMiddleware:
         if request.user.is_authenticated:
             if request.user.rol == "ADMIN":
                 request.menu_items = [
-                    ("Home", "/home/"),
-                    ("Usuarios", "/usuarios/"),
-                    ("Inventario", "/inventario/"),
+                    ("Home", "/"),
+                    ("Inventario", "/inventario/productos/"),
                     ("Ventas", "/ventas/"),
                     ("Compras", "/compras/"),
+                    ("Proveedores", "/inventario/proveedores/"),
+                    ("Órdenes de Compra", "/inventario/ordenes/"),
+                    ("Alertas", "/inventario/alertas/"),
                     ("Reportes", "/reportes/"),
                 ]
             else:
                 request.menu_items = [
+                    ("Home", "/"),
+                    ("Inventario", "/inventario/productos/"),
                     ("Ventas", "/ventas/"),
-                    ("Mis Ventas", "/ventas/mis-ventas/"),
+                    ("Compras", "/compras/"),
+                    ("Proveedores", "/inventario/proveedores/"),
+                    ("Órdenes de Compra", "/inventario/ordenes/"),
+                    ("Alertas", "/inventario/alertas/"),
                 ]
 
         return self.get_response(request)

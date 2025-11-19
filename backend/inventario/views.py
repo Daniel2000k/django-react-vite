@@ -39,7 +39,7 @@ class InventarioViewSet(viewsets.ModelViewSet):
 def inventario_dashboard(request):
     """Dashboard simple del home - solo datos básicos"""
     
-    productos = Producto.objects.all()
+    productos = Producto.objects.filter(activo=True)  # Solo productos activos
     movimientos = Inventario.objects.all().order_by('-fecha')[:10]
     
     total_productos = productos.count()
@@ -62,7 +62,7 @@ def inventario_dashboard(request):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def producto_lista(request):
-    productos = Producto.objects.all()
+    productos = Producto.objects.filter(activo=True)  # Solo productos activos
     return render(request, 'inventario/producto_lista.html', {'productos': productos})
 
 
@@ -115,6 +115,57 @@ def verificar_codigo_producto(request):
     codigo = request.GET.get('codigo', '').strip()
     existe = Producto.objects.filter(codigo=codigo).exists()
     return JsonResponse({'existe': existe})
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='login')
+def producto_editar(request, producto_id):
+    producto = get_object_or_404(Producto, id=producto_id)
+    
+    if request.method == 'POST':
+        try:
+            nombre = request.POST.get('nombre').strip()
+            precio_compra = request.POST.get('precio_compra').strip()
+            precio_venta = request.POST.get('precio_venta').strip()
+
+            if not all([nombre, precio_compra, precio_venta]):
+                messages.error(request, 'Por favor completa todos los campos')
+                return render(request, 'inventario/producto_form.html', {
+                    'producto': producto,
+                    'editar': True,
+                    'nombre': nombre,
+                    'precio_compra': precio_compra,
+                    'precio_venta': precio_venta,
+                })
+
+            producto.nombre = nombre
+            producto.precio_compra = float(precio_compra)
+            producto.precio_venta = float(precio_venta)
+            producto.save()
+            messages.success(request, f'Producto "{nombre}" actualizado exitosamente')
+            return redirect('producto_lista')
+
+        except ValueError:
+            messages.error(request, 'Los precios deben ser números válidos.')
+            return render(request, 'inventario/producto_form.html', {'producto': producto, 'editar': True})
+
+    return render(request, 'inventario/producto_form.html', {'producto': producto, 'editar': True})
+
+
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='login')
+def producto_eliminar(request, producto_id):
+    producto = get_object_or_404(Producto, id=producto_id)
+    
+    if request.method == 'POST':
+        nombre = producto.nombre
+        # En lugar de eliminar, desactivar
+        producto.activo = False
+        producto.save()
+        messages.success(request, f'Producto "{nombre}" desactivado exitosamente')
+        return redirect('producto_lista')
+    
+    return render(request, 'inventario/producto_confirm_delete.html', {'producto': producto})
 
 # ==================== MOVIMIENTOS ====================
 
