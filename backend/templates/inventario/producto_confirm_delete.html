@@ -1,0 +1,60 @@
+{% extends 'inventario/base.html' %}
+{% block title %}Desactivar Producto - Stock Master{% endblock %}
+{% block page_title %}Desactivar Producto{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-xl shadow-lg p-8 border-l-4 border-orange-500">
+        
+        <div class="flex items-start gap-4 mb-6">
+            <div class="text-4xl">⚠️</div>
+            <div>
+                <h2 class="text-2xl font-bold text-orange-600 mb-2">Desactivar Producto</h2>
+                <p class="text-gray-700">El producto se desactivará y no aparecerá en la lista, pero conservará su historial de ventas.</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-100 rounded-lg p-6 mb-6">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm font-semibold text-gray-600">Código</label>
+                    <p class="text-lg font-mono font-bold text-gray-800">#{{ producto.codigo }}</p>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-600">Nombre</label>
+                    <p class="text-lg font-bold text-gray-800">{{ producto.nombre }}</p>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-600">Stock Actual</label>
+                    <p class="text-lg font-bold text-gray-800">{{ producto.stock }} unidades</p>
+                </div>
+                <div>
+                    <label class="text-sm font-semibold text-gray-600">Precio Venta</label>
+                    <p class="text-lg font-bold text-gray-800">${{ producto.precio_venta }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
+            <p class="text-orange-800">
+                <strong>Nota:</strong> El producto <strong>{{ producto.nombre }}</strong> se desactivará. Seguirá siendo visible en el historial de ventas, pero no aparecerá en la lista de productos disponibles.
+            </p>
+        </div>
+
+        <form method="POST" class="flex gap-4">
+            {% csrf_token %}
+            
+            <button type="submit" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2">
+                <span>🚫</span> Desactivar Producto
+            </button>
+            
+            <a href="{% url 'producto_lista' %}" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition text-center flex items-center justify-center gap-2">
+                <span>❌</span> Cancelar
+            </a>
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}

@@ -1,12 +1,12 @@
 {% extends 'inventario/base.html' %}
-{% block title %}Crear Producto - Stock Master{% endblock %}
-{% block page_title %}Nuevo Producto{% endblock %}
+{% block title %}{% if editar %}Editar Producto{% else %}Crear Producto{% endif %} - Stock Master{% endblock %}
+{% block page_title %}{% if editar %}✏️ Editar Producto{% else %}➕ Nuevo Producto{% endif %}{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto">
     <div class="mb-6">
         <h2 class="text-2xl font-bold text-gray-800 flex items-center">
-            <span class="mr-3">➕</span>Crear Nuevo Producto
+            <span class="mr-3">{% if editar %}✏️{% else %}➕{% endif %}</span>{% if editar %}Editar Producto: {{ producto.nombre }}{% else %}Crear Nuevo Producto{% endif %}
         </h2>
     </div>
 
@@ -14,20 +14,30 @@
         <form method="post" class="space-y-6">
             {% csrf_token %}
 
-            <!-- Código -->
+            <!-- Código (solo lectura en edición) -->
             <div>
                 <label for="codigo" class="block text-sm font-semibold text-gray-700 mb-2">
                     <span class="text-red-500">*</span> Código Producto
                 </label>
-                <input 
-                    type="number" 
-                    id="codigo" 
-                    name="codigo" 
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                    placeholder="Ej: 12345"
-                    required
-                >
-                <p class="text-gray-500 text-xs mt-1">El código debe ser único</p>
+                {% if editar %}
+                    <div class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
+                        #{{ producto.codigo }} <span class="text-xs text-gray-500">(No se puede cambiar)</span>
+                    </div>
+                {% else %}
+                    <input 
+                        type="number" 
+                        id="codigo" 
+                        name="codigo" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        placeholder="Ej: 12345"
+                        required
+                    >
+                    
+                    <!-- mensaje dinámico -->
+                    <p id="codigo-msg" class="text-xs mt-1 font-semibold"></p>
+
+                    <p class="text-gray-500 text-xs mt-1">El código debe ser único</p>
+                {% endif %}
             </div>
 
             <!-- Nombre -->
@@ -41,6 +51,7 @@
                     name="nombre" 
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     placeholder="Ej: Laptop Dell XPS 13"
+                    value="{% if editar %}{{ producto.nombre }}{% else %}{{ nombre }}{% endif %}"
                     required
                 >
             </div>
@@ -61,6 +72,7 @@
                             step="0.01"
                             class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                             placeholder="0.00"
+                            value="{% if editar %}{{ producto.precio_compra }}{% else %}{{ precio_compra }}{% endif %}"
                             required
                         >
                     </div>
@@ -80,19 +92,31 @@
                             step="0.01"
                             class="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                             placeholder="0.00"
+                            value="{% if editar %}{{ producto.precio_venta }}{% else %}{{ precio_venta }}{% endif %}"
                             required
                         >
                     </div>
                 </div>
             </div>
 
+            <!-- Stock (solo lectura en edición) -->
+            {% if editar %}
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Stock Actual</label>
+                <div class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600">
+                    {{ producto.stock }} unidades
+                </div>
+                <p class="text-gray-500 text-xs mt-1">Para cambiar el stock, usa la sección de "Movimientos"</p>
+            </div>
+            {% endif %}
+
             <!-- Botones -->
             <div class="flex gap-4 pt-6 border-t border-gray-200">
                 <button 
                     type="submit" 
-                    class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold transition flex items-center justify-center"
+                    class="flex-1 {% if editar %}bg-blue-500 hover:bg-blue-600{% else %}bg-green-500 hover:bg-green-600{% endif %} text-white py-3 rounded-lg font-semibold transition flex items-center justify-center"
                 >
-                    <span class="mr-2">✅</span>Crear Producto
+                    <span class="mr-2">{% if editar %}💾{% else %}✅{% endif %}</span>{% if editar %}Guardar Cambios{% else %}Crear Producto{% endif %}
                 </button>
                 <a 
                     href="{% url 'producto_lista' %}" 
@@ -112,7 +136,39 @@
             <li>• El precio de compra es el costo por unidad</li>
             <li>• El precio de venta es lo que cobras al cliente</li>
             <li>• La ganancia será: (Precio Venta - Precio Compra) × Cantidad Vendida</li>
+            {% if editar %}
+            <li>• Para cambiar el stock, ve a la sección de "Movimientos"</li>
+            {% endif %}
         </ul>
     </div>
 </div>
+
+<!-- Script de validación en tiempo real (solo para crear) -->
+{% if not editar %}
+<script>
+document.getElementById("codigo").addEventListener("keyup", function () {
+    const codigo = this.value;
+    const msg = document.getElementById("codigo-msg");
+
+    if (codigo.length === 0) {
+        msg.textContent = "";
+        msg.className = "text-xs mt-1 font-semibold";
+        return;
+    }
+
+    fetch(`/inventario/productos/verificar-codigo/?codigo=` + codigo)
+        .then(res => res.json())
+        .then(data => {
+            if (data.existe) {
+                msg.textContent = "⚠️ Este código ya está registrado";
+                msg.className = "text-xs mt-1 font-semibold text-red-600";
+            } else {
+                msg.textContent = "✔️ Código disponible";
+                msg.className = "text-xs mt-1 font-semibold text-green-600";
+            }
+        });
+});
+</script>
+{% endif %}
+
 {% endblock %}

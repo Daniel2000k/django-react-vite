@@ -26,6 +26,7 @@
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Precio Compra</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Precio Venta</th>
                     <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Ganancia</th>
+                    <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -48,6 +49,14 @@
                         {% with ganancia=prod.precio_venta|add:prod.precio_compra %}
                             <span class="text-green-600">+${{ ganancia }}</span>
                         {% endwith %}
+                    </td>
+                    <td class="px-6 py-4 text-sm flex gap-2">
+                        <a href="{% url 'producto_editar' prod.id %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold transition inline-flex items-center" title="Editar producto">
+                            ✏️ Editar
+                        </a>
+                        <a href="{% url 'producto_eliminar' prod.id %}" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold transition inline-flex items-center" title="Eliminar producto">
+                            🗑️ Eliminar
+                        </a>
                     </td>
                 </tr>
                 {% endfor %}

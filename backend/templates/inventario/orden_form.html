@@ -1,0 +1,67 @@
+{% extends "inventario/base.html" %}
+{% block title %}Nueva Orden de Compra{% endblock %}
+{% block page_title %}Registrar Orden de Compra{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-xl shadow p-8">
+
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- PROVEEDOR -->
+        <div>
+            <label for="proveedor" class="font-semibold">Proveedor</label>
+            <select id="proveedor" name="proveedor" title="Seleccionar proveedor"
+                    class="w-full border px-4 py-3 rounded-lg" required>
+                <option value="">-- Seleccione --</option>
+                {% for p in proveedores %}
+                <option value="{{ p.id }}">{{ p.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- PRODUCTO -->
+        <div>
+            <label for="producto" class="font-semibold">Producto</label>
+            <select id="producto" name="producto" title="Seleccionar producto"
+                    class="w-full border px-4 py-3 rounded-lg" required>
+                <option value="">-- Seleccione --</option>
+                {% for prod in productos %}
+                <option value="{{ prod.id }}">{{ prod.nombre }} (Stock: {{ prod.stock }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- CANTIDAD -->
+        <div>
+            <label for="cantidad" class="font-semibold">Cantidad</label>
+            <input id="cantidad" name="cantidad" type="number" min="1"
+                   placeholder="Ej: 10"
+                   title="Cantidad a comprar"
+                   class="w-full border px-4 py-3 rounded-lg" required>
+        </div>
+
+        <!-- COSTO UNITARIO -->
+        <div>
+            <label for="costo_unitario" class="font-semibold">Costo unitario</label>
+            <input id="costo_unitario" name="costo_unitario" type="number"
+                   step="0.01" placeholder="Ej: 2500"
+                   title="Costo por unidad"
+                   class="w-full border px-4 py-3 rounded-lg" required>
+        </div>
+
+        <div class="flex gap-4 pt-6">
+            <button type="submit"
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold">
+                Registrar Orden
+            </button>
+
+            <a href="{% url 'orden_lista' %}"
+               class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg text-center">
+                Cancelar
+            </a>
+        </div>
+
+    </form>
+</div>
+{% endblock %}

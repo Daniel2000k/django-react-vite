@@ -1,0 +1,164 @@
+{% extends 'inventario/base.html' %}
+{% block title %}Dashboard Reportes{% endblock %}
+{% block page_title %}Dashboard de Reportes{% endblock %}
+
+{% block content %}
+
+<!-- ============================= -->
+<!-- TARJETAS DE ESTADÍSTICAS -->
+<!-- ============================= -->
+
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+
+    <!-- Total Productos -->
+    <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition transform hover:-translate-y-1">
+        <p class="text-gray-500 text-sm font-medium">📦 Total Productos</p>
+        <h3 class="text-4xl font-extrabold text-gray-800 mt-3">{{ total_productos }}</h3>
+        <p class="text-gray-600 text-sm mt-2">en el sistema</p>
+    </div>
+
+    <!-- Stock Total -->
+    <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition transform hover:-translate-y-1">
+        <p class="text-gray-500 text-sm font-medium">📊 Stock Total</p>
+        <h3 class="text-4xl font-extrabold text-blue-600 mt-3">{{ stock_total }}</h3>
+        <p class="text-blue-600 text-sm mt-2">unidades disponibles</p>
+    </div>
+
+    <!-- Total Ventas Hoy -->
+    <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition transform hover:-translate-y-1">
+        <p class="text-gray-500 text-sm font-medium">💰 Ventas Hoy</p>
+        <h3 class="text-4xl font-extrabold text-green-600 mt-3">${{ ventas_hoy|floatformat:2 }}</h3>
+        <p class="text-green-600 text-sm mt-2">ingresos del día</p>
+    </div>
+
+    <!-- Bajo Stock -->
+    <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition transform hover:-translate-y-1">
+        <p class="text-gray-500 text-sm font-medium">⚠️ Bajo Stock</p>
+        <h3 class="text-4xl font-extrabold text-orange-600 mt-3">{{ bajo_stock }}</h3>
+        <p class="text-orange-600 text-sm mt-2">productos por reponer</p>
+    </div>
+
+</div>
+
+<!-- ============================= -->
+<!-- GRÁFICAS -->
+<!-- ============================= -->
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+
+    <!-- Gráfica de productos más vendidos -->
+    <div class="bg-white rounded-xl p-6 shadow">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">📈 Top 10 Productos Vendidos (Últimos 30 días)</h2>
+        <canvas id="graficaMasVendidos" height="80"></canvas>
+    </div>
+
+    <!-- Gráfica de entradas vs salidas -->
+    <div class="bg-white rounded-xl p-6 shadow">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">📊 Entradas vs Salidas (Últimos 7 días)</h2>
+        <canvas id="graficaMovimientos" height="80"></canvas>
+    </div>
+
+</div>
+
+<!-- ============================= -->
+<!-- ACCESO RÁPIDO A REPORTES -->
+<!-- ============================= -->
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+
+    <a href="{% url 'reportes:ventas_por_periodo' %}" class="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-xl shadow text-white hover:shadow-xl transition transform hover:-translate-y-1">
+        <p class="text-sm opacity-90">📅 Período</p>
+        <h3 class="text-xl font-bold mt-3">Ventas por Período</h3>
+        <p class="text-sm mt-2 opacity-75">Filtra por rango de fechas</p>
+    </a>
+
+    <a href="{% url 'reportes:top_productos' %}" class="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-xl shadow text-white hover:shadow-xl transition transform hover:-translate-y-1">
+        <p class="text-sm opacity-90">🏆 Top</p>
+        <h3 class="text-xl font-bold mt-3">Top Productos</h3>
+        <p class="text-sm mt-2 opacity-75">Los más vendidos del período</p>
+    </a>
+
+    <a href="{% url 'reportes:productos_bajo_stock' %}" class="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-xl shadow text-white hover:shadow-xl transition transform hover:-translate-y-1">
+        <p class="text-sm opacity-90">⚠️ Stock</p>
+        <h3 class="text-xl font-bold mt-3">Bajo Stock</h3>
+        <p class="text-sm mt-2 opacity-75">Productos por reponer</p>
+    </a>
+
+</div>
+
+<!-- ============================= -->
+<!-- SCRIPTS DE GRÁFICAS -->
+<!-- ============================= -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Parseamos los JSON seguros desde el servidor
+    const productos = JSON.parse('{{ nombres_mas_vendidos_json|escapejs }}');
+    const cantidades = JSON.parse('{{ cantidades_mas_vendidas_json|escapejs }}');
+
+    const diasMov = JSON.parse('{{ dias_json|escapejs }}');
+    const entradas = JSON.parse('{{ entradas_json|escapejs }}');
+    const salidas = JSON.parse('{{ salidas_json|escapejs }}');
+
+    // Gráfica 1 - Más vendidos
+    const ctx1 = document.getElementById('graficaMasVendidos').getContext('2d');
+    new Chart(ctx1, {
+        type: 'bar',
+        data: {
+            labels: productos,
+            datasets: [{
+                label: 'Unidades vendidas',
+                data: cantidades,
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 2
+            }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    // Gráfica 2 - Entradas vs salidas
+    const ctx2 = document.getElementById('graficaMovimientos').getContext('2d');
+    new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: diasMov,
+            datasets: [
+                { 
+                    label: 'Entradas',
+                    data: entradas,
+                    borderColor: 'rgba(34, 197, 94, 1)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                },
+                { 
+                    label: 'Salidas',
+                    data: salidas,
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+
+{% endblock %}

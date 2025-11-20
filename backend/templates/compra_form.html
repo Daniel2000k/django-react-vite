@@ -1,0 +1,132 @@
+<form method="POST">
+    {% csrf_token %}
+
+    <h2>Nueva Compra</h2>
+
+    <!-- PROVEEDOR -->
+    <label><strong>Proveedor:</strong></label>
+    <select name="proveedor" required>
+        <option value="">Seleccione...</option>
+        {% for p in proveedores %}
+        <option value="{{ p.id }}">{{ p.nombre }}</option>
+        {% endfor %}
+    </select>
+
+    <hr>
+
+    <!-- BUSCADOR -->
+    <label><strong>Buscar Producto:</strong></label>
+    <input type="text" id="buscador" placeholder="Buscar producto..." onkeyup="filtrar()">
+
+    <!-- SELECT PRODUCTOS -->
+    <select id="producto_select">
+        {% for prod in productos %}
+        <option value="{{ prod.id }}" data-precio="{{ prod.precio_compra }}">
+            {{ prod.nombre }} | {{ prod.codigo }}
+        </option>
+        {% endfor %}
+    </select>
+
+    <button type="button" onclick="agregarFila()">Agregar</button>
+
+    <br><br>
+
+    <!-- TABLA DETALLE -->
+    <table border="1" width="100%" id="tabla">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Subtotal</th>
+                <th>Eliminar</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h2>Total: $<span id="total">0.00</span></h2>
+
+    <button type="submit">Guardar Compra</button>
+</form>
+
+<script>
+// FILTRAR PRODUCTOS POR NOMBRE O CÓDIGO
+function filtrar() {
+    const texto = document.getElementById("buscador").value.toLowerCase();
+    const select = document.getElementById("producto_select");
+
+    for (let option of select.options) {
+        const contenido = option.text.toLowerCase();
+        option.style.display = contenido.includes(texto) ? "block" : "none";
+    }
+}
+
+// AGREGAR PRODUCTO A LA TABLA
+function agregarFila() {
+    const select = document.getElementById("producto_select");
+    const id = select.value;
+    const nombre = select.options[select.selectedIndex].text;
+    const precio = parseFloat(select.options[select.selectedIndex].dataset.precio);
+
+    if (!id) return;
+
+    // ❌ Evitar productos repetidos
+    if (document.querySelector(`input[value="${id}"]`)) {
+        alert("Este producto ya fue agregado.");
+        return;
+    }
+
+    const tabla = document.querySelector("#tabla tbody");
+
+    const fila = `
+        <tr>
+            <td>
+                <input type="hidden" name="producto_id[]" value="${id}">
+                ${nombre}
+            </td>
+
+            <td>
+                <input type="number" name="cantidad[]" 
+                       value="1" min="1" 
+                       onchange="actualizar()" style="width:70px;">
+            </td>
+
+            <td>
+                <input type="number" name="precio_unitario[]" 
+                       value="${precio}" step="0.01" 
+                       onchange="actualizar()" style="width:90px;">
+            </td>
+
+            <td class="subtotal">${precio.toFixed(2)}</td>
+
+            <td>
+                <button type="button"
+                        onclick="this.closest('tr').remove(); actualizar();">
+                    X
+                </button>
+            </td>
+        </tr>
+    `;
+
+    tabla.insertAdjacentHTML("beforeend", fila);
+    actualizar();
+}
+
+// ACTUALIZAR SUBTOTALES Y TOTAL
+function actualizar() {
+    let total = 0;
+
+    document.querySelectorAll("#tabla tbody tr").forEach(row => {
+        const cantidad = parseFloat(row.querySelector('input[name="cantidad[]"]').value);
+        const precio = parseFloat(row.querySelector('input[name="precio_unitario[]"]').value);
+
+        const subtotal = cantidad * precio;
+        row.querySelector(".subtotal").innerText = subtotal.toFixed(2);
+
+        total += subtotal;
+    });
+
+    document.getElementById("total").innerText = total.toFixed(2);
+}
+</script>

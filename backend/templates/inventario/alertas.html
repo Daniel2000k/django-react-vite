@@ -1,0 +1,44 @@
+{% extends "inventario/base.html" %}
+{% block title %}Alertas{% endblock %}
+{% block page_title %}Alertas del Sistema{% endblock %}
+
+{% block content %}
+
+<div class="bg-white rounded-xl shadow overflow-hidden">
+
+    {% if alertas %}
+    <ul class="divide-y">
+
+        {% for a in alertas %}
+        <li class="p-6 hover:bg-gray-50 flex justify-between items-center">
+
+            <div>
+                <h3 class="font-semibold text-gray-800">{{ a.titulo }}</h3>
+                <p class="text-gray-600 text-sm">{{ a.mensaje }}</p>
+                <span class="text-xs text-gray-400">{{ a.fecha }}</span>
+            </div>
+
+            <div>
+                {% if not a.leida %}
+                <a href="{% url 'alerta_marcar_leida' a.id %}"
+                   class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+                    Marcar como leída
+                </a>
+                {% else %}
+                <span class="text-green-600 text-sm">✔ Leída</span>
+                {% endif %}
+            </div>
+
+        </li>
+        {% endfor %}
+
+    </ul>
+    {% else %}
+    <div class="px-6 py-14 text-center text-gray-600">
+        🔔 No hay alertas en este momento.
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

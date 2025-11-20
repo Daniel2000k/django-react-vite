@@ -1,0 +1,31 @@
+{% extends "inventario/base.html" %}
+{% block title %}OC-{{ orden.id }}{% endblock %}
+{% block page_title %}Orden OC-{{ orden.id }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6">
+    <div class="flex justify-between">
+        <div>
+            <h3 class="font-semibold text-lg">Proveedor: {{ orden.proveedor.nombre }}</h3>
+            <p class="text-sm text-gray-600">Producto: {{ orden.producto.nombre }}</p>
+            <p class="text-sm text-gray-600">Cantidad: {{ orden.cantidad }}</p>
+            <p class="text-sm text-gray-600">Costo unitario: ${{ orden.costo_unitario }}</p>
+            <p class="text-sm text-gray-600">Subtotal: ${{ orden.subtotal }}</p>
+            <p class="text-sm text-gray-600">Estado: {{ orden.estado }}</p>
+            <p class="text-sm text-gray-600">Creada: {{ orden.fecha_creacion }}</p>
+            {% if orden.fecha_recepcion %}
+            <p class="text-sm text-gray-600">Recibida: {{ orden.fecha_recepcion }}</p>
+            {% endif %}
+        </div>
+
+        <div class="flex flex-col gap-3">
+            {% if orden.estado == 'PENDIENTE' %}
+                <a href="{% url 'orden_recibir' orden.id %}" class="bg-green-600 text-white px-4 py-2 rounded-lg">Marcar como recibida</a>
+                <a href="{% url 'orden_editar' orden.id %}" class="bg-yellow-500 text-white px-4 py-2 rounded-lg">Editar</a>
+                <a href="{% url 'orden_cancelar' orden.id %}" class="bg-red-500 text-white px-4 py-2 rounded-lg">Cancelar</a>
+            {% endif %}
+            <a href="{% url 'orden_lista' %}" class="bg-gray-400 text-white px-4 py-2 rounded-lg">Volver</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

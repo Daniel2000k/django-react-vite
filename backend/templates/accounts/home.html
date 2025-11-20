@@ -119,3 +119,18 @@
     </div>
 </div>
 {% endblock %}
+
+<script>
+    // Ocultar en el sidebar las entradas 'ordenes' y 'alertas' solo cuando estemos en home
+    (function(){
+        try{
+            const items = document.querySelectorAll('aside nav a');
+            items.forEach(a => {
+                const text = (a.textContent || '').toLowerCase().trim();
+                if(text.includes('orden') || text.includes('alert')){
+                    a.style.display = 'none';
+                }
+            });
+        }catch(e){ /* si no existe aside, no hacemos nada */ }
+    })();
+</script>

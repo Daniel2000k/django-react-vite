@@ -1,0 +1,73 @@
+{% extends "inventario/base.html" %}
+{% block title %}Productos Bajo Stock{% endblock %}
+{% block page_title %}Productos con Bajo Stock{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+    <h2 class="text-2xl font-bold mb-6">⚠️ Productos con Bajo Stock</h2>
+
+    <!-- Filtro -->
+    <form method="GET" class="bg-gray-50 p-4 rounded-lg mb-6">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-semibold mb-2">Umbral Mínimo de Stock</label>
+                <input type="number" name="threshold" value="{{ threshold }}" min="1" class="w-full px-3 py-2 border rounded-lg">
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600">
+                    Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Alerta -->
+    {% if total > 0 %}
+    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-6 rounded">
+        <p class="text-orange-700 font-semibold">
+            ⚠️ {{ total }} producto(s) con stock ≤ {{ threshold }} unidades
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Tabla -->
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+            <thead>
+                <tr class="bg-gray-100 border-b-2">
+                    <th class="px-4 py-3 text-left text-sm font-semibold">Código</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">📦 Producto</th>
+                    <th class="px-4 py-3 text-right text-sm font-semibold">Stock Actual</th>
+                    <th class="px-4 py-3 text-right text-sm font-semibold">Precio Venta</th>
+                    <th class="px-4 py-3 text-center text-sm font-semibold">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prod in productos %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3">{{ prod.codigo }}</td>
+                    <td class="px-4 py-3">{{ prod.nombre }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-semibold">
+                            {{ prod.stock }} unidades
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-right">${{ prod.precio_venta|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <a href="{% url 'orden_crear' %}" class="text-blue-500 hover:underline text-sm font-semibold">
+                            Comprar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                        ✅ Todos los productos tienen stock adecuado
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

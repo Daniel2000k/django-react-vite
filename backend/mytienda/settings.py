@@ -1,6 +1,6 @@
 from pathlib import Path
-from decouple import config       # ✅ Importa python-decouple
-import dj_database_url            # ✅ Importa dj-database-url
+from decouple import config # ✅ Importa python-decouple
+import dj_database_url # ✅ Importa dj-database-url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,7 +21,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'inventario',
-    'accounts'
+    'accounts',
+    'ventas',
+    'compras',
+    'reportes'
 ]
 
 MIDDLEWARE = [
@@ -33,6 +36,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 🌟 Mejora Solicitada
+    'mytienda.middleware.role_menu.RoleMenuMiddleware',
 ]
 
 ROOT_URLCONF = 'mytienda.urls'
@@ -82,14 +87,15 @@ AUTH_USER_MODEL = 'accounts.User'
 
 
 AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
+    'accounts.backends.EmailBackend', # Backend personalizado para autenticar con email
+    'django.contrib.auth.backends.ModelBackend', # Backend por defecto
 ]
 
 
 #CORS_ALLOWED_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-   "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 REST_FRAMEWORK = {
@@ -98,3 +104,5 @@ REST_FRAMEWORK = {
     )
 }
 
+# Configuración de manejo de errores personalizados ⚠️
+handler403 = "mi_tienda.views.error_403"

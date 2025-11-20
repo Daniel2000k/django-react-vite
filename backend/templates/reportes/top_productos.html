@@ -1,0 +1,61 @@
+{% extends "inventario/base.html" %}
+{% block title %}Top Productos{% endblock %}
+{% block page_title %}Top 20 Productos Más Vendidos{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+    <h2 class="text-2xl font-bold mb-6">🏆 Top 20 Productos Más Vendidos</h2>
+
+    <!-- Filtro -->
+    <form method="GET" class="bg-gray-50 p-4 rounded-lg mb-6">
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-semibold mb-2">Período (Últimos X días)</label>
+                <select name="dias" class="w-full px-3 py-2 border rounded-lg">
+                    <option value="7" {% if dias == 7 %}selected{% endif %}>Última semana</option>
+                    <option value="30" {% if dias == 30 %}selected{% endif %}>Último mes</option>
+                    <option value="90" {% if dias == 90 %}selected{% endif %}>Último trimestre</option>
+                    <option value="365" {% if dias == 365 %}selected{% endif %}>Último año</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button type="submit" class="w-full bg-blue-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-600">
+                    Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Tabla -->
+    <div class="overflow-x-auto">
+        <table class="w-full border-collapse">
+            <thead>
+                <tr class="bg-gray-100 border-b-2">
+                    <th class="px-4 py-3 text-left text-sm font-semibold">#</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold">📦 Producto</th>
+                    <th class="px-4 py-3 text-right text-sm font-semibold">Cantidad Vendida</th>
+                    <th class="px-4 py-3 text-right text-sm font-semibold">Total Generado</th>
+                    <th class="px-4 py-3 text-right text-sm font-semibold">Transacciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in top %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3 font-bold text-center">{{ forloop.counter }}</td>
+                    <td class="px-4 py-3">{{ p.producto__nombre }}</td>
+                    <td class="px-4 py-3 text-right font-semibold">{{ p.cantidad_vendida }}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-green-600">${{ p.total_generado|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-right">{{ p.num_transacciones }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+                        📭 No hay datos disponibles
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

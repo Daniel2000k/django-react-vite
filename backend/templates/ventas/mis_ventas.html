@@ -1,0 +1,39 @@
+{% extends "inventario/base.html" %}
+
+{% block content %}
+<h1 class="text-3xl font-bold mb-4">Mis Ventas</h1>
+
+<table class="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+    <thead class="bg-gray-200">
+        <tr>
+            <th class="px-4 py-2 text-left">ID</th>
+            <th class="px-4 py-2 text-left">Fecha</th>
+            <th class="px-4 py-2 text-left">Cliente</th>
+            <th class="px-4 py-2 text-left">Total</th>
+            <th class="px-4 py-2 text-left">Acciones</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for venta in ventas %}
+        <tr class="border-t">
+            <td class="px-4 py-2">{{ venta.id }}</td>
+            <td class="px-4 py-2">{{ venta.fecha }}</td>
+            <td class="px-4 py-2">{{ venta.cliente }}</td>
+            <td class="px-4 py-2">${{ venta.total }}</td>
+            <td class="px-4 py-2">
+                <a href="{% url 'venta_detalle' venta.id %}"
+                   class="text-blue-600">Ver</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5" class="px-4 py-2 text-center text-gray-500">
+                No tienes ventas registradas.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

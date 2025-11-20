@@ -1,0 +1,62 @@
+{% extends "inventario/base.html" %}
+{% block title %}Proveedores{% endblock %}
+{% block page_title %}Gestión de Proveedores{% endblock %}
+
+{% block content %}
+
+<div class="mb-6 flex justify-between items-center">
+    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+        <span class="mr-3 text-3xl">📨</span> Proveedores Registrados
+    </h2>
+    <a href="{% url 'proveedor_crear' %}"
+       class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+        ➕ Nuevo Proveedor
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow overflow-hidden">
+
+    {% if proveedores %}
+    <table class="w-full">
+        <thead class="bg-gray-100 border-b">
+            <tr>
+                <th class="px-6 py-4 text-left">Nombre</th>
+                <th class="px-6 py-4 text-left">Teléfono</th>
+                <th class="px-6 py-4 text-left">Correo</th>
+                <th class="px-6 py-4 text-left">Dirección</th>
+                <th class="px-6 py-4 text-left">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            {% for prov in proveedores %}
+            <tr class="hover:bg-gray-50 border-b">
+                <td class="px-6 py-4">
+                    <a href="{% url 'proveedor_detalle' prov.id %}" class="text-blue-600 hover:underline font-semibold">
+                        {{ prov.nombre }}
+                    </a>
+                </td>
+                <td class="px-6 py-4">{{ prov.telefono }}</td>
+                <td class="px-6 py-4">{{ prov.correo }}</td>
+                <td class="px-6 py-4">{{ prov.direccion }}</td>
+                <td class="px-6 py-4">
+                    <a href="{% url 'proveedor_editar' prov.id %}"
+                       class="text-yellow-600 hover:underline mr-4">✏ Editar</a>
+                    <a href="{% url 'proveedor_eliminar' prov.id %}"
+                       class="text-red-600 hover:underline">🗑 Eliminar</a>
+                </td>
+            </tr>
+            {% endfor %}
+
+        </tbody>
+    </table>
+
+    {% else %}
+    <div class="px-6 py-14 text-center text-gray-600">
+        📭 No hay proveedores registrados.
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}

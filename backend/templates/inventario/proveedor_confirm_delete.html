@@ -1,0 +1,16 @@
+{% extends "inventario/base.html" %}
+{% block title %}Eliminar Proveedor{% endblock %}
+{% block page_title %}Confirmar eliminación{% endblock %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-white rounded-xl shadow p-8 text-center">
+    <p class="text-lg mb-6">¿Seguro que deseas eliminar al proveedor <strong>{{ proveedor.nombre }}</strong>?</p>
+    <form method="post">
+        {% csrf_token %}
+        <div class="flex gap-4 justify-center">
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg">Sí, eliminar</button>
+            <a href="{% url 'proveedor_lista' %}" class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

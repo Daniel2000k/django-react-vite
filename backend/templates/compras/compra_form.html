@@ -1,0 +1,113 @@
+{% extends "inventario/base.html" %}
+{% block title %}Nueva Compra{% endblock %}
+{% block page_title %}Registrar Nueva Compra{% endblock %}
+
+{% block content %}
+
+<form method="post" class="bg-white p-6 rounded-xl shadow max-w-4xl mx-auto">
+    {% csrf_token %}
+
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="p-4 rounded-lg bg-red-100 text-red-700">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="mb-6">
+        <label class="block font-semibold mb-2">Proveedor</label>
+        <select name="proveedor" required class="w-full p-2 border rounded bg-gray-50">
+            <option value="">Selecciona un proveedor</option>
+            {% for proveedor in proveedores %}
+                <option value="{{ proveedor.id }}">{{ proveedor.nombre }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="mb-6">
+        <h3 class="font-semibold mb-3">Productos</h3>
+        <table class="w-full border-collapse">
+            <thead>
+                <tr class="bg-gray-100 border-b">
+                    <th class="px-4 py-2 text-left">Producto</th>
+                    <th class="px-4 py-2 text-center">Cantidad</th>
+                    <th class="px-4 py-2 text-right">Precio Unitario</th>
+                    <th class="px-4 py-2 text-right">Subtotal</th>
+                </tr>
+            </thead>
+
+            <tbody id="productos-table">
+            {% for producto in productos %}
+                <tr class="border-b producto-row">
+                    <td class="px-4 py-2 font-semibold">
+                        <input type="hidden" name="producto_id[]" value="{{ producto.id }}">
+                        {{ producto.nombre }} (Cod: {{ producto.codigo }})
+                    </td>
+
+                    <td class="px-4 py-2">
+                        <input type="number" name="cantidad[]" min="0" step="1"
+                               class="w-20 px-2 py-1 border rounded cantidad" placeholder="0" value="0">
+                    </td>
+
+                    <td class="px-4 py-2 text-right">
+                        <input type="number" name="precio_unitario[]" value="{{ producto.precio_compra }}"
+                               step="0.01" min="0" class="w-24 px-2 py-1 border rounded precio">
+                    </td>
+
+                    <td class="px-4 py-2 text-right font-semibold subtotal">$0.00</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+
+        </table>
+    </div>
+
+    <div class="mb-6 text-right">
+        <p class="text-xl font-bold text-gray-800">
+            Total: <span class="text-green-700" id="total-general">$0.00</span>
+        </p>
+    </div>
+
+    <button type="submit" class="bg-green-600 hover:bg-green-700 text-white py-3 px-6 rounded-lg font-semibold w-full">
+        ✅ Registrar Compra
+    </button>
+</form>
+
+<script>
+function actualizarTotales() {
+    let totalGeneral = 0;
+
+    document.querySelectorAll('.producto-row').forEach(row => {
+        const cantidad = parseFloat(row.querySelector('.cantidad').value) || 0;
+        const precio = parseFloat(row.querySelector('.precio').value) || 0;
+        const subtotal = cantidad * precio;
+
+        row.querySelector('.subtotal').textContent = '$' + subtotal.toFixed(2);
+        totalGeneral += subtotal;
+    });
+
+    document.getElementById('total-general').textContent = '$' + totalGeneral.toFixed(2);
+}
+
+document.addEventListener('input', function (e) {
+    if (e.target.classList.contains('cantidad')) {
+        actualizarTotales();
+    }
+});
+
+// BORRAR FILA
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('borrar')) {
+        e.target.closest('tr').remove();
+        actualizarTotales();
+    }
+});
+
+// iniciar
+document.addEventListener('DOMContentLoaded', actualizarTotales);
+</script>
+
+{% endblock %}

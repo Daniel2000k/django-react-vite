@@ -1,0 +1,60 @@
+{% extends "inventario/base.html" %}
+{% block title %}Proveedor - {{ proveedor.nombre }}{% endblock %}
+{% block page_title %}Proveedor: {{ proveedor.nombre }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-xl shadow p-6 mb-6">
+    <div class="flex justify-between items-center">
+        <div>
+            <p class="text-sm text-gray-500">Teléfono: {{ proveedor.telefono }}</p>
+            <p class="text-sm text-gray-500">Correo: {{ proveedor.correo }}</p>
+            <p class="text-sm text-gray-500">Dirección: {{ proveedor.direccion }}</p>
+        </div>
+        <div class="flex gap-2">
+            <a href="{% url 'proveedor_editar' proveedor.id %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg">Editar</a>
+            <a href="{% url 'proveedor_eliminar' proveedor.id %}" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Eliminar</a>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow overflow-hidden">
+    <div class="px-6 py-4 border-b">
+        <h3 class="font-semibold">Historial de Órdenes</h3>
+    </div>
+
+    {% if ordenes %}
+    <table class="w-full">
+        <thead class="bg-gray-100 border-b">
+            <tr>
+                <th class="px-6 py-3 text-left">OC</th>
+                <th class="px-6 py-3 text-left">Producto</th>
+                <th class="px-6 py-3 text-left">Cantidad</th>
+                <th class="px-6 py-3 text-left">Subtotal</th>
+                <th class="px-6 py-3 text-left">Estado</th>
+                <th class="px-6 py-3 text-left">Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for oc in ordenes %}
+            <tr class="border-b hover:bg-gray-50">
+                <td class="px-6 py-3">OC-{{ oc.id }}</td>
+                <td class="px-6 py-3">{{ oc.producto.nombre }}</td>
+                <td class="px-6 py-3">{{ oc.cantidad }}</td>
+                <td class="px-6 py-3">${{ oc.subtotal }}</td>
+                <td class="px-6 py-3">{{ oc.estado }}</td>
+                <td class="px-6 py-3">
+                    <a href="{% url 'orden_detalle' oc.id %}" class="text-blue-600 hover:underline mr-2">Ver</a>
+                    {% if oc.estado == 'PENDIENTE' %}
+                        <a href="{% url 'orden_editar' oc.id %}" class="text-yellow-600 hover:underline mr-2">Editar</a>
+                        <a href="{% url 'orden_cancelar' oc.id %}" class="text-red-600 hover:underline">Cancelar</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-12 text-center text-gray-600">No hay órdenes para este proveedor.</div>
+    {% endif %}
+</div>
+{% endblock %}

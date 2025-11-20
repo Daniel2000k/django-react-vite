@@ -1,0 +1,75 @@
+{% extends "accounts/base.html" %}
+{% block page_title %}Formulario de Usuario{% endblock %}
+
+{% block content %}
+
+<div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow">
+
+    <h2 class="text-3xl font-bold mb-6">Formulario de Usuario</h2>
+
+    <form method="POST" class="space-y-5">
+        {% csrf_token %}
+
+        <!-- Username -->
+        <div>
+            <label class="font-semibold text-gray-700">Username</label>
+            <input type="text" name="username"
+                   value="{{ form.username.value|default:'' }}"
+                   class="w-full border rounded px-4 py-2 mt-1">
+            <p class="text-sm text-gray-500">Requerido. Letras, números y @/./+/-/_</p>
+        </div>
+
+        <!-- First Name -->
+        <div>
+            <label class="font-semibold text-gray-700">Nombre</label>
+            <input type="text" name="first_name"
+                   value="{{ form.first_name.value|default:'' }}"
+                   class="w-full border rounded px-4 py-2 mt-1">
+        </div>
+
+        <!-- Last Name -->
+        <div>
+            <label class="font-semibold text-gray-700">Apellido</label>
+            <input type="text" name="last_name"
+                   value="{{ form.last_name.value|default:'' }}"
+                   class="w-full border rounded px-4 py-2 mt-1">
+        </div>
+
+        <!-- Email -->
+        <div>
+            <label class="font-semibold text-gray-700">Correo</label>
+            <input type="email" name="email"
+                   value="{{ form.email.value|default:'' }}"
+                   class="w-full border rounded px-4 py-2 mt-1">
+        </div>
+
+        <!-- Rol -->
+        <div>
+            <label class="font-semibold text-gray-700">Rol</label>
+            <select name="rol" class="w-full border rounded px-4 py-2 mt-1">
+                {% for key, value in form.rol.field.choices %}
+                    <option value="{{ key }}"
+                        {% if form.rol.value == key %}selected{% endif %}>
+                        {{ value }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Password solo para crear -->
+        {% if not form.instance.pk %}
+        <div>
+            <label class="font-semibold text-gray-700">Password</label>
+            <input type="password" name="password"
+                   class="w-full border rounded px-4 py-2 mt-1">
+        </div>
+        {% endif %}
+
+        <button class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+            Guardar
+        </button>
+    </form>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "inventario/base.html" %}
+{% block title %}{% if editar %}Editar Proveedor{% else %}Nuevo Proveedor{% endif %}{% endblock %}
+{% block page_title %}{% if editar %}Editar Proveedor{% else %}Registrar Proveedor{% endif %}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white rounded-xl shadow p-8">
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+
+        <!-- Nombre -->
+        <div>
+            <label for="nombre" class="font-semibold">Nombre</label>
+            <input id="nombre" name="nombre" type="text"
+                   placeholder="Nombre del proveedor"
+                   title="Nombre del proveedor"
+                   value="{{ proveedor.nombre|default:'' }}"
+                   class="w-full border px-4 py-3 rounded-lg" required>
+        </div>
+
+        <!-- Teléfono -->
+        <div>
+            <label for="telefono" class="font-semibold">Teléfono</label>
+            <input id="telefono" name="telefono" type="text"
+                   placeholder="Ej: 3001234567"
+                   title="Teléfono del proveedor"
+                   value="{{ proveedor.telefono|default:'' }}"
+                   class="w-full border px-4 py-3 rounded-lg" required>
+        </div>
+
+        <!-- Correo -->
+        <div>
+            <label for="correo" class="font-semibold">Correo electrónico</label>
+            <div class="relative">
+                <input id="correo" name="correo" type="email"
+                       placeholder="proveedor@empresa.com"
+                       title="Correo electrónico del proveedor"
+                       value="{{ proveedor.correo|default:'' }}"
+                       class="w-full border px-4 py-3 rounded-lg" required>
+                <small id="correo-msg" class="text-xs mt-1 font-semibold"></small>
+            </div>
+        </div>
+
+        <!-- Dirección -->
+        <div>
+            <label for="direccion" class="font-semibold">Dirección</label>
+            <input id="direccion" name="direccion" type="text"
+                   placeholder="Dirección del proveedor"
+                   title="Dirección del proveedor"
+                   value="{{ proveedor.direccion|default:'' }}"
+                   class="w-full border px-4 py-3 rounded-lg" required>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-4 pt-6">
+            <button type="submit"
+                class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold">
+                {% if editar %}Actualizar{% else %}Guardar{% endif %}
+            </button>
+
+            <a href="{% url 'proveedor_lista' %}"
+                class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-lg text-center">
+                Cancelar
+            </a>
+        </div>
+
+    </form>
+</div>
+
+<!-- Script de validación en tiempo real -->
+<script>
+// Validación en tiempo real del correo
+document.getElementById("correo").addEventListener("keyup", function () {
+    const correo = this.value.trim().toLowerCase();
+    const msg = document.getElementById("correo-msg");
+    const form = document.querySelector('form');
+
+    if (correo.length === 0) {
+        msg.textContent = "";
+        msg.className = "text-xs mt-1 font-semibold";
+        form.dataset.correoValido = "false";
+        return;
+    }
+
+    // Validar formato de correo
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(correo)) {
+        msg.textContent = "⚠️ Ingresa un correo válido";
+        msg.className = "text-xs mt-1 font-semibold text-orange-600";
+        form.dataset.correoValido = "false";
+        return;
+    }
+
+    // Verificar disponibilidad del correo
+    fetch(`/inventario/proveedores/verificar-correo/?correo=${encodeURIComponent(correo)}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.existe) {
+                msg.textContent = "❌ Este correo ya está registrado";
+                msg.className = "text-xs mt-1 font-semibold text-red-600";
+                form.dataset.correoValido = "false";
+            } else {
+                msg.textContent = "✔️ Correo disponible";
+                msg.className = "text-xs mt-1 font-semibold text-green-600";
+                form.dataset.correoValido = "true";
+            }
+        })
+        .catch(err => {
+            msg.textContent = "⚠️ Error al verificar correo";
+            msg.className = "text-xs mt-1 font-semibold text-yellow-600";
+        });
+});
+
+// Validar antes de enviar el formulario
+document.querySelector('form').addEventListener('submit', function (e) {
+    const correo = document.getElementById("correo").value.trim();
+    const correoValido = this.dataset.correoValido === "true";
+    
+    // Validar formato de correo
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (!emailRegex.test(correo)) {
+        e.preventDefault();
+        alert('❌ Por favor ingresa un correo electrónico válido');
+        return false;
+    }
+    
+    if (!correoValido && correo.length > 0) {
+        e.preventDefault();
+        alert('❌ Este correo ya está registrado. Por favor usa otro.');
+        return false;
+    }
+});
+</script>
+{% endblock %}

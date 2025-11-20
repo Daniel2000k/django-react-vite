@@ -1,0 +1,88 @@
+{% extends "inventario/base.html" %}
+{% block title %}Órdenes de Compra{% endblock %}
+{% block page_title %}Listado de Órdenes de Compra{% endblock %}
+
+{% block content %}
+
+<div class="mb-6 flex justify-between items-center">
+    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+        <span class="mr-3 text-3xl">🧾</span> Órdenes Registradas
+    </h2>
+    <a href="{% url 'orden_crear' %}"
+       class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+        ➕ Nueva Orden
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow overflow-hidden">
+
+    {% if ordenes %}
+    <table class="w-full">
+        <thead class="bg-gray-100 border-b">
+            <tr>
+                <th class="px-6 py-4 text-left">OC</th>
+                <th class="px-6 py-4 text-left">Proveedor</th>
+                <th class="px-6 py-4 text-left">Producto</th>
+                <th class="px-6 py-4 text-left">Cantidad</th>
+                <th class="px-6 py-4 text-left">Subtotal</th>
+                <th class="px-6 py-4 text-left">Estado</th>
+                <th class="px-6 py-4 text-left">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            {% for oc in ordenes %}
+            <tr class="hover:bg-gray-50 border-b">
+                <td class="px-6 py-4 font-semibold">OC-{{ oc.id }}</td>
+                <td class="px-6 py-4">{{ oc.proveedor.nombre }}</td>
+                <td class="px-6 py-4">{{ oc.producto.nombre }}</td>
+                <td class="px-6 py-4">{{ oc.cantidad }}</td>
+                <td class="px-6 py-4 text-green-700">${{ oc.subtotal }}</td>
+
+                <td class="px-6 py-4">
+                    {% if oc.estado == "PENDIENTE" %}
+                        <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">Pendiente</span>
+                    {% elif oc.estado == "RECIBIDA" %}
+                        <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs">Recibida</span>
+                    {% else %}
+                        <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs">Cancelada</span>
+                    {% endif %}
+                </td>
+
+                <td class="px-6 py-4 flex gap-3">
+                    <!-- Ver -->
+                    <a href="{% url 'orden_detalle' oc.id %}" class="text-blue-600 hover:underline text-sm">👁 Ver</a>
+
+                    {% if oc.estado == "PENDIENTE" %}
+                        <!-- Editar -->
+                        <a href="{% url 'orden_editar' oc.id %}"
+                           class="text-yellow-600 hover:underline text-sm">✏ Editar</a>
+
+                        <!-- Cancelar -->
+                        <a href="{% url 'orden_cancelar' oc.id %}"
+                           class="text-red-600 hover:underline text-sm">🗑 Cancelar</a>
+
+                        <!-- Recibir -->
+                        <a href="{% url 'orden_recibir' oc.id %}"
+                           class="bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 text-sm">
+                           ✔ Recibir
+                        </a>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+
+        </tbody>
+    </table>
+
+    {% else %}
+    <div class="px-6 py-14 text-center text-gray-600">
+        📭 No hay órdenes registradas.
+    </div>
+    {% endif %}
+
+</div>
+
+{% endblock %}
