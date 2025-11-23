@@ -202,7 +202,8 @@ def venta_factura_pdf(request, venta_id):
     y -= 20
 
     for item in venta.detalles.all():
-        p.drawString(60, y, f"{item.producto.nombre} x {item.cantidad} = ${item.subtotal}")
+        nombre_producto = item.producto.nombre if item.producto else item.producto_nombre
+        p.drawString(60, y, f"{nombre_producto} x {item.cantidad} = ${item.subtotal}")
         y -= 20
 
     y -= 20

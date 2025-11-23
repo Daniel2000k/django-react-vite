@@ -42,7 +42,7 @@
                 {% for p in top %}
                 <tr class="border-b hover:bg-gray-50">
                     <td class="px-4 py-3 font-bold text-center">{{ forloop.counter }}</td>
-                    <td class="px-4 py-3">{{ p.producto__nombre }}</td>
+                    <td class="px-4 py-3">{{ p.prod_name }}</td>
                     <td class="px-4 py-3 text-right font-semibold">{{ p.cantidad_vendida }}</td>
                     <td class="px-4 py-3 text-right font-semibold text-green-600">${{ p.total_generado|floatformat:2 }}</td>
                     <td class="px-4 py-3 text-right">{{ p.num_transacciones }}</td>

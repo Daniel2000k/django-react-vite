@@ -166,10 +166,9 @@ def producto_eliminar(request, producto_id):
     
     if request.method == 'POST':
         nombre = producto.nombre
-        # En lugar de eliminar, desactivar
-        producto.activo = False
-        producto.save()
-        messages.success(request, f'Producto "{nombre}" desactivado exitosamente')
+        # Eliminar físicamente el producto. Las ventas conservarán el nombre por snapshot en DetalleVenta.
+        producto.delete()
+        messages.success(request, f'Producto "{nombre}" eliminado correctamente')
         return redirect('producto_lista')
     
     return render(request, 'inventario/producto_confirm_delete.html', {'producto': producto})
