@@ -3,14 +3,14 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Venta, DetalleVenta
 from inventario.models import Producto, Inventario
-from rest_framework import viewsets # opcional, si se planea usar viewsets aquí
+from rest_framework import viewsets  # opcional, si se planea usar viewsets aquí
 from decimal import Decimal
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from django.contrib import messages
 
 # Importación de la función de chequeo de Admin/Cajero (aunque usaremos lambda)
-from accounts.views import es_admin, es_cajero # Importar las funciones (aunque se usa lambda)
+from accounts.views import es_admin, es_cajero  # Importar las funciones (aunque se usa lambda)
 
 
 # ==================== VENTAS ====================
@@ -26,13 +26,10 @@ def venta_lista(request):
     user = request.user
 
     if user.rol == "ADMIN":
-        # ADMIN ve TODAS las ventas ordenadas por ID descendente
         ventas = Venta.objects.all().order_by('-id')
     else:
-        # CAJERO ve SOLO sus ventas ordenadas por ID descendente
         ventas = Venta.objects.filter(usuario=user).order_by('-id')
 
-    # Nota: Se utiliza 'venta_lista.html' tal como está en el código original.
     return render(request, 'inventario/venta_lista.html', {'ventas': ventas})
 
 
@@ -40,7 +37,8 @@ def venta_lista(request):
 @user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_crear(request):
     """Crear nueva venta (Solo ADMIN/CAJERO)."""
-    productos = Producto.objects.all()
+    # Mostrar solo productos activos (los desactivados ya no deben aparecer en ventas)
+    productos = Producto.objects.filter(activo=True)
 
     if request.method == 'POST':
         items = []
@@ -118,6 +116,9 @@ def venta_crear(request):
 
         cambio = (monto_recibido - total_final) if metodo_pago == "EFECTIVO" else Decimal("0")
 
+        # Capturar correo del cliente
+        email_cliente = request.POST.get("email_cliente")
+
         # Crear venta
         venta = Venta.objects.create(
             total=total,
@@ -128,7 +129,8 @@ def venta_crear(request):
             metodo_pago=metodo_pago,
             monto_recibido=monto_recibido,
             cambio=cambio,
-            usuario=request.user
+            usuario=request.user,
+            email_cliente=email_cliente  # ⬅️ nuevo
         )
 
         # Guardar detalles + descontar stock
@@ -141,7 +143,6 @@ def venta_crear(request):
                 subtotal=subtotal
             )
 
-            # Movimiento de inventario (SALIDA)
             Inventario.objects.create(
                 producto=producto,
                 tipo="SALIDA",
@@ -161,10 +162,9 @@ def venta_detalle(request, venta_id):
     """Ver detalle de una venta, solo si es de ADMIN o si es su propia venta."""
     venta = get_object_or_404(Venta, id=venta_id)
     
-    # Restricción adicional: si no es ADMIN, solo puede ver sus propias ventas
     if request.user.rol != "ADMIN" and venta.usuario != request.user:
-          messages.error(request, "No tienes permiso para ver esta venta.")
-          return redirect('venta_lista')
+        messages.error(request, "No tienes permiso para ver esta venta.")
+        return redirect('venta_lista')
           
     return render(request, 'inventario/venta_detalle.html', {'venta': venta})
 
@@ -172,25 +172,16 @@ def venta_detalle(request, venta_id):
 # ==================== FACTURA PDF ====================
 
 @login_required(login_url='login')
-@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login') # Añadir restricción de rol
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_factura_pdf(request, venta_id):
-    """
-    Generar factura de venta en PDF.
-    Solo accesible por ADMIN o el CAJERO que realizó la venta.
-    """
     venta = get_object_or_404(Venta, id=venta_id)
 
-    # Restricción: Solo permite si es ADMIN o si es su propia venta
     if request.user.rol != "ADMIN" and venta.usuario != request.user:
-          messages.error(request, "No tienes permiso para generar la factura de esta venta.")
-          # Cambiado a HttpResponseForbidden para una respuesta HTTP más apropiada
-          return HttpResponseForbidden("No tienes permiso para generar la factura de esta venta.")
+        return HttpResponseForbidden("No tienes permiso para ver esta factura.")
 
-
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename="factura_{venta.id}.pdf"'
-
-    p = canvas.Canvas(response, pagesize=letter)
+    from io import BytesIO
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
 
     y = 750
     p.setFont("Helvetica-Bold", 16)
@@ -200,54 +191,66 @@ def venta_factura_pdf(request, venta_id):
     p.setFont("Helvetica", 12)
     p.drawString(50, y, f"Fecha: {venta.fecha.strftime('%Y-%m-%d %H:%M:%S')}")
     y -= 20
-    p.drawString(50, y, f"Cajero: {venta.usuario.username}")
+    p.drawString(50, y, f"Cajero: {venta.usuario.email}")
     y -= 20
     p.drawString(50, y, f"Método de pago: {venta.metodo_pago}")
+    y -= 20
+    p.drawString(50, y, f"Cliente: {venta.email_cliente or 'No registrado'}")
     y -= 30
 
-    # Detalle de productos
     p.drawString(50, y, "Detalle:")
     y -= 20
 
     for item in venta.detalles.all():
-        p.drawString(60, y, f"{item.producto.nombre} x {item.cantidad} @ ${item.precio_unitario} = ${item.subtotal}")
+        p.drawString(60, y, f"{item.producto.nombre} x {item.cantidad} = ${item.subtotal}")
         y -= 20
 
     y -= 20
-
-    # Totales (SUBTOTAL - DESCUENTO + IVA)
     p.drawString(50, y, f"Subtotal: ${venta.total}")
     y -= 20
-
     p.drawString(50, y, f"Descuento: -${venta.descuento_general}")
     y -= 20
-
     p.drawString(50, y, f"IVA ({venta.iva_porcentaje}%): ${venta.iva_total}")
     y -= 30
 
     p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, y, f"TOTAL A PAGAR: ${venta.total_final}")
+    p.drawString(50, y, f"TOTAL FINAL: ${venta.total_final}")
     y -= 25
 
-    # Monto recibido y cambio
-    if venta.metodo_pago == "EFECTIVO":
-        p.setFont("Helvetica", 12)
-        p.drawString(50, y, f"Monto recibido: ${venta.monto_recibido}")
-        y -= 20
-        p.drawString(50, y, f"Cambio: ${venta.cambio}")
-    
     p.showPage()
     p.save()
 
+    pdf_data = buffer.getvalue()
+    buffer.close()
+
+    # Enviar email al cliente con fallback al cajero si no hay correo de cliente
+    from django.core.mail import EmailMessage
+    asunto = f"Factura de Venta #{venta.id}"
+    cuerpo = "Adjuntamos la factura de su compra. ¡Gracias por su compra!"
+
+    if venta.email_cliente:
+        email_destino = venta.email_cliente
+    else:
+        email_destino = venta.usuario.email  # backup
+
+    email = EmailMessage(
+        asunto,
+        cuerpo,
+        "hittlerfurer3@gmail.com",   # remitente
+        [email_destino],             # destinatario
+    )
+
+    email.attach(f"factura_{venta.id}.pdf", pdf_data, "application/pdf")
+    email.send()
+
+    response = HttpResponse(pdf_data, content_type="application/pdf")
+    response['Content-Disposition'] = f'inline; filename="factura_{venta.id}.pdf"'
     return response
 
-# ==================== MIS VENTAS (Agregado) ====================
+
+# ==================== MIS VENTAS ====================
 
 @login_required
 def mis_ventas(request):
-    """
-    Vista simple para mostrar solo las ventas realizadas por el usuario actual.
-    (Nota: Esta lógica está cubierta por venta_lista para el rol CAJERO).
-    """
     ventas = Venta.objects.filter(usuario=request.user).order_by('-fecha')
     return render(request, 'ventas/mis_ventas.html', {"ventas": ventas})

@@ -2,7 +2,6 @@ from django.db import models
 from django.utils import timezone
 from inventario.models import Producto
 
-# Create your models here.
 # ===========================
 # VENTA
 # ===========================
@@ -21,13 +20,17 @@ class Venta(models.Model):
     monto_recibido = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     cambio = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
-    # Descuentos e impuestos (Fase 2)
+    # Descuentos e impuestos
     descuento_general = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     iva_porcentaje = models.DecimalField(max_digits=5, decimal_places=2, default=19.0)
     iva_total = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     total_final = models.DecimalField(max_digits=15, decimal_places=2, default=0)
 
+    # Usuario cajero que realiza la venta
     usuario = models.ForeignKey('accounts.User', null=True, on_delete=models.SET_NULL)
+
+    # NUEVO: email del cliente para factura electrónica
+    email_cliente = models.EmailField(null=True, blank=True)
 
     def __str__(self):
         return f"Venta #{self.id} - ${self.total_final}"
@@ -45,4 +48,3 @@ class DetalleVenta(models.Model):
 
     def __str__(self):
         return f"{self.producto.nombre} x {self.cantidad}"
-

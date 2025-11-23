@@ -11,6 +11,7 @@ class RoleMenuMiddleware:
             if request.user.rol == "ADMIN":
                 request.menu_items = [
                     ("Home", "/"),
+                    ("Usuarios", "/usuarios/"),
                     ("Inventario", "/inventario/productos/"),
                     ("Ventas", "/ventas/"),
                     ("Compras", "/compras/"),

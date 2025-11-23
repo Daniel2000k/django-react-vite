@@ -4,6 +4,16 @@ import dj_database_url # ✅ Importa dj-database-url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+#email factura
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = "hittlerfurer3@gmail.com"
+EMAIL_HOST_PASSWORD = "gyhh ivqt fhze abim"
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 # ⚙️ Cargar variables desde el .env
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
