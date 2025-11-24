@@ -21,7 +21,7 @@ class RoleMenuMiddleware:
             elif request.user.rol == "CAJERO":
                 # Cajero: menú minimalista — acceso a ventas y a sus ventas (mis ventas)
                 request.menu_items = [
-                    ("Ventas", "/ventas/"),
+                    ("Venta", "/ventas/crear/"),
                     ("Mis Ventas", "/ventas/mis-ventas/"),
                 ]
             else:
