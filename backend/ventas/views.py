@@ -3,7 +3,9 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Venta, DetalleVenta
 from inventario.models import Producto, Inventario
-from rest_framework import viewsets  # opcional, si se planea usar viewsets aquí
+from django.http import JsonResponse  # opcional, si se planea usar viewsets aquí
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_GET
 from decimal import Decimal
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
@@ -159,8 +161,6 @@ def venta_lista(request):
 @user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_crear(request):
     """Crear nueva venta (Solo ADMIN/CAJERO)."""
-    # Mostrar solo productos activos (los desactivados ya no deben aparecer en ventas)
-    productos = Producto.objects.filter(activo=True)
 
     if request.method == 'POST':
         items = []
@@ -279,7 +279,8 @@ def venta_crear(request):
         
         return redirect('venta_detalle', venta_id=venta.id)
 
-    return render(request, 'inventario/venta_crear.html', {'productos': productos})
+    # GET: Mostrar formulario vacío (sin productos estáticos)
+    return render(request, 'inventario/venta_crear.html')
 
 
 @login_required(login_url='login')
@@ -325,3 +326,65 @@ def venta_factura_pdf(request, venta_id):
 def mis_ventas(request):
     ventas = Venta.objects.filter(usuario=request.user).order_by('-fecha')
     return render(request, 'ventas/mis_ventas.html', {"ventas": ventas})
+
+
+
+#mimimiim
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
+@require_GET
+def productos_search_json(request):
+    """
+    GET /ventas/api/productos-search/?q=...
+    Devuelve JSON con lista de productos activos que coinciden por nombre o código.
+    Limita a 30 resultados.
+    """
+    q = request.GET.get('q', '').strip()
+    productos = Producto.objects.filter(activo=True)
+
+    if q:
+        # si q es numérico buscar por código también
+        if q.isdigit():
+            productos = productos.filter(codigo__icontains=q) | productos.filter(nombre__icontains=q)
+        else:
+            productos = productos.filter(nombre__icontains=q)
+
+    productos = productos.order_by('nombre')[:30]
+
+    data = [
+        {
+            'id': p.id,
+            'nombre': p.nombre,
+            'codigo': p.codigo,
+            'precio_venta': float(p.precio_venta),
+            'stock': p.stock,
+        }
+        for p in productos
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
+@require_GET
+def producto_json(request, producto_id):
+    """
+    GET /ventas/api/producto/<id>/
+    Devuelve JSON con detalle de un producto (para cuando el frontend
+    quiera solicitar datos completos de un id concreto).
+    """
+    try:
+        p = Producto.objects.get(id=producto_id, activo=True)
+    except Producto.DoesNotExist:
+        return JsonResponse({'error': 'Producto no encontrado'}, status=404)
+
+    data = {
+        'id': p.id,
+        'nombre': p.nombre,
+        'codigo': p.codigo,
+        'precio_venta': float(p.precio_venta),
+        'precio_compra': float(p.precio_compra),
+        'stock': p.stock,
+        'descripcion': getattr(p, 'descripcion', '')  # si existe
+    }
+    return JsonResponse(data)

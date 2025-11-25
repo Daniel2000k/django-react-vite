@@ -55,8 +55,8 @@ urlpatterns = [
     # Nueva URL para factura PDF
     path('ventas/<int:venta_id>/factura/', venta_factura_pdf, name='venta_factura_pdf'),  # <-- AGREGADO
 
-    # API REST
-    path('api/', include(router.urls)),
-    path('api/productos/crear/', api_producto_create, name='api_producto_create'),
+    # ⭐ API REST - RUTAS ESPECÍFICAS PRIMERO (antes del router)
     path('api/productos/buscar/', api_productos_search, name='api_productos_search'),
+    path('api/productos/crear/', api_producto_create, name='api_producto_create'),
+    path('api/', include(router.urls)),
 ]

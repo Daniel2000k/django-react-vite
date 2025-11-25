@@ -100,7 +100,8 @@ def api_producto_create(request):
 
 
 def api_productos_search(request):
-    """Buscar productos por q (GET). Devuelve lista JSON de productos activos que coinciden en nombre o codigo."""
+    """Buscar productos por q (GET). Devuelve lista JSON de productos activos que coinciden en nombre o codigo.
+    SIN decoradores - endpoint público para búsqueda de productos en ventas"""
     q = request.GET.get('q', '').strip()
     productos = Producto.objects.filter(activo=True)
     if q:
@@ -116,7 +117,7 @@ def api_productos_search(request):
             'id': p.id,
             'nombre': p.nombre,
             'codigo': p.codigo,
-            'precio_venta': str(p.precio_venta),
+            'precio_venta': float(p.precio_venta),
             'stock': p.stock,
         }
         for p in productos
@@ -161,7 +162,7 @@ def inventario_dashboard(request):
 # ==================== PRODUCTOS ====================
 
 @login_required(login_url='login')
-@user_passes_test(es_admin, login_url='login') # CORREGIDO
+@user_passes_test(es_admin, login_url='login') 
 def producto_lista(request):
     # ✅ OPTIMIZACIÓN: Cargar solo productos activos sin queries adicionales
     productos = Producto.objects.filter(activo=True).order_by('nombre')  # Solo productos activos
