@@ -1,6 +1,6 @@
 from pathlib import Path
-from decouple import config # ✅ Importa python-decouple
-import dj_database_url # ✅ Importa dj-database-url
+from decouple import config  python-decouple
+import dj_database_url 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -14,7 +14,7 @@ EMAIL_HOST_USER = "stockmaster255@gmail.com"
 EMAIL_HOST_PASSWORD = "gxckbjvvbleipkyp"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# ⚙️ Cargar variables desde el .env
+#  variables desde el .env
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-dev-key-change-in-production')
 DEBUG = config('DEBUG', default=True, cast=bool)
 
@@ -47,7 +47,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 🌟 Mejora Solicitada
+   
     'mytienda.middleware.role_menu.RoleMenuMiddleware',
 ]
 
@@ -70,8 +70,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mytienda.wsgi.application'
 
-# ✅ Configuración de base de datos (SUPABASE PostgreSQL)
-# Lee directamente del .env
+# Lee directamente del env
 DATABASES = {
     'default': dj_database_url.parse(config('DATABASE_URL'))
 }
@@ -115,5 +114,5 @@ REST_FRAMEWORK = {
     )
 }
 
-# Configuración de manejo de errores personalizados ⚠️
+# Configuración de manejo de errores 
 handler403 = "mi_tienda.views.error_403"
