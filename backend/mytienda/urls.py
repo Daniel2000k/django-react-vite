@@ -7,10 +7,10 @@ from django.views.generic import RedirectView
 urlpatterns = [
     path('admin/', admin.site.urls),
     
-    # 💡 RUTA CORREGIDA: La URL raíz ahora incluye las rutas de 'accounts'.
+    #  La URL raíz  incluye las rutas de 'accounts'.
     path('', include('accounts.urls')), 
     
-    # Rutas de autenticación (manteniendo el prefijo '/accounts/' para las demás rutas)
+    # Rutas de autenticación 
     path('accounts/', include('accounts.urls')),
     
     # Rutas del inventario
