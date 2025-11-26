@@ -107,6 +107,13 @@
 </form>
 
 <script>
+// Función para formatear moneda (puntos cada mil, sin decimales si es .00)
+function formatearMoneda(valor) {
+    const num = parseFloat(valor) || 0;
+    const redondeado = Math.round(num);
+    return redondeado.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 let carrito = {}; // {id_producto: {id, nombre, codigo, precio, stock, cantidad}}
 
 const inputBuscar = document.getElementById('buscar-productos');
@@ -134,7 +141,7 @@ inputBuscar.addEventListener('input', async (e) => {
         ulSugerencias.innerHTML = productos.map(p => `
             <li class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b transition" data-id="${p.id}" data-nombre="${p.nombre}" data-codigo="${p.codigo}" data-precio="${p.precio_venta}" data-stock="${p.stock}">
                 <div class="font-semibold text-gray-800">${p.nombre}</div>
-                <div class="text-sm text-gray-600">Cod: ${p.codigo} | $${parseFloat(p.precio_venta).toFixed(2)} | Stock: ${p.stock}</div>
+                <div class="text-sm text-gray-600">Cod: ${p.codigo} | $${formatearMoneda(p.precio_venta)} | Stock: ${p.stock}</div>
             </li>
         `).join('');
         ulSugerencias.classList.remove('hidden');
@@ -193,12 +200,12 @@ function renderCarrito() {
             <tr class="border-b hover:bg-gray-100">
                 <td class="px-4 py-3 font-semibold">${p.nombre}</td>
                 <td class="px-4 py-3 text-center text-gray-600">${p.codigo}</td>
-                <td class="px-4 py-3 text-right text-green-700 font-bold">$${p.precio.toFixed(2)}</td>
+                <td class="px-4 py-3 text-right text-green-700 font-bold">$${formatearMoneda(p.precio)}</td>
                 <td class="px-4 py-3 text-center text-blue-600">${p.stock}</td>
                 <td class="px-4 py-3 text-center">
                     <input type="number" value="${p.cantidad}" min="1" max="${p.stock}" class="w-16 p-1 border rounded text-center input-cant" data-id="${p.id}">
                 </td>
-                <td class="px-4 py-3 text-right font-bold">$${subtotal}</td>
+                <td class="px-4 py-3 text-right font-bold">$${formatearMoneda(subtotal)}</td>
                 <td class="px-4 py-3 text-center">
                     <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded btn-del" data-id="${p.id}">🗑️</button>
                 </td>
@@ -243,11 +250,11 @@ function calcularTotales() {
     const monto = parseFloat(document.getElementById('monto_recibido').value) || 0;
     const cambio = Math.max(0, monto - total);
 
-    document.getElementById('subtotal').textContent = subtotal.toFixed(2);
-    document.getElementById('descuento-val').textContent = desc.toFixed(2);
-    document.getElementById('iva-val').textContent = iva.toFixed(2);
-    document.getElementById('total-val').textContent = total.toFixed(2);
-    document.getElementById('cambio-val').textContent = cambio.toFixed(2);
+    document.getElementById('subtotal').textContent = formatearMoneda(subtotal);
+    document.getElementById('descuento-val').textContent = formatearMoneda(desc);
+    document.getElementById('iva-val').textContent = formatearMoneda(iva);
+    document.getElementById('total-val').textContent = formatearMoneda(total);
+    document.getElementById('cambio-val').textContent = formatearMoneda(cambio);
 }
 
 document.getElementById('descuento_general').addEventListener('input', calcularTotales);

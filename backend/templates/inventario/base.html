@@ -41,7 +41,8 @@
 
     <div class="flex">
 
-        <aside class="w-64 bg-[#1F3B92] border-r h-screen p-4 shadow-lg">
+        <aside class="w-64 bg-[#1F3B92] border-r h-screen p-4 shadow-lg overflow-y-auto sticky top-0">
+
 
             <nav class="flex flex-col space-y-2">
                 {% with items=menu_items|default:request.menu_items %}

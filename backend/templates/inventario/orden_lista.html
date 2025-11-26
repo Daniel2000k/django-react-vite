@@ -28,7 +28,7 @@
                 <td class="px-6 py-4">{{ oc.proveedor.nombre }}</td>
                 <td class="px-6 py-4">{{ oc.producto.nombre }}</td>
                 <td class="px-6 py-4">{{ oc.cantidad }}</td>
-                <td class="px-6 py-4 text-green-700">${{ oc.subtotal }}</td>
+                <td class="px-6 py-4 text-green-700">${{ oc.subtotal|currency_format }}</td>
 
                 <td class="px-6 py-4">
                     {% if oc.estado == "PENDIENTE" %}

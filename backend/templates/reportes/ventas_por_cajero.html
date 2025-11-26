@@ -26,7 +26,7 @@
     <!-- Total General -->
     <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6 rounded-lg mb-6">
         <p class="text-lg opacity-90">Total General Vendido</p>
-        <h3 class="text-4xl font-bold">${{ total_general|floatformat:2 }}</h3>
+        <h3 class="text-4xl font-bold">${{ total_general|currency_format }}</h3>
     </div>
 
     <!-- Tabla -->
@@ -45,8 +45,8 @@
                 <tr class="border-b hover:bg-gray-50">
                     <td class="px-4 py-3 font-semibold">{{ cajero.usuario_nombre|default:'Sin usuario' }}</td>
                     <td class="px-4 py-3 text-right">{{ cajero.num_transacciones }}</td>
-                    <td class="px-4 py-3 text-right font-semibold text-green-600">${{ cajero.total_vendido|floatformat:2 }}</td>
-                    <td class="px-4 py-3 text-right">${{ cajero.ticket_promedio|floatformat:2 }}</td>
+                    <td class="px-4 py-3 text-right font-semibold text-green-600">${{ cajero.total_vendido|currency_format }}</td>
+                    <td class="px-4 py-3 text-right">${{ cajero.ticket_promedio|currency_format }}</td>
                 </tr>
                 {% empty %}
                 <tr>

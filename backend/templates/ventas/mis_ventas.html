@@ -20,7 +20,7 @@
             <td class="px-4 py-2">{{ venta.id }}</td>
             <td class="px-4 py-2">{{ venta.fecha }}</td>
             <td class="px-4 py-2">{{ venta.cliente }}</td>
-            <td class="px-4 py-2">${{ venta.total }}</td>
+            <td class="px-4 py-2">${{ venta.total|currency_format }}</td>
             <td class="px-4 py-2">
                 <a href="{% url 'venta_detalle' venta.id %}"
                    class="text-blue-600">Ver</a>

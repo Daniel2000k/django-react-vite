@@ -1,5 +1,5 @@
 from pathlib import Path
-from decouple import config  python-decouple
+from decouple import config  
 import dj_database_url 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -63,6 +63,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+            ],
+            'builtins': [
+                'inventario.templatetags.currency_filter',
             ],
         },
     },
