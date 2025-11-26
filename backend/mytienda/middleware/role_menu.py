@@ -16,6 +16,7 @@ class RoleMenuMiddleware:
                     ("Ventas", "/ventas/"),
                     ("Compras", "/compras/"),
                     ("Proveedores", "/inventario/proveedores/"),
+                    ("Devoluciones", "/devoluciones/"),
                     ("Reportes", "/reportes/"),
                 ]
             elif request.user.rol == "CAJERO":
@@ -32,6 +33,7 @@ class RoleMenuMiddleware:
                     ("Ventas", "/ventas/"),
                     ("Compras", "/compras/"),
                     ("Proveedores", "/inventario/proveedores/"),
+                    ("Devoluciones", "/devoluciones/"),
                 ]
 
         return self.get_response(request)

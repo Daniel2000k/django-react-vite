@@ -3,9 +3,10 @@
 {% block title %}Registro - Mi Tienda{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center">
+<div class="min-h-screen flex items-center justify-center bg-[#f0f4ff]">
     <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-8">
         <h2 class="text-2xl font-bold mb-4 text-center">Crea tu cuenta</h2>
+        <div class="h-1 bg-[#1F3B92] rounded mb-6"></div>
 
         <form id="registerForm" method="POST" class="space-y-4">
             {% csrf_token %}
@@ -13,20 +14,20 @@
             <div>
                 <label for="email" class="block font-semibold text-gray-700 mb-1">Correo electrónico</label>
                 <input id="email" name="email" type="email" required autofocus
-                             class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-blue-400">
+                             class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-[#2a5adc]">
             </div>
 
             <div>
                 <label for="username" class="block font-semibold text-gray-700 mb-1">Usuario</label>
                 <input id="username" name="username" type="text" required
-                             class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-blue-400" placeholder="nombre_usuario">
+                             class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-[#2a5adc]" placeholder="nombre_usuario">
             </div>
 
             <div>
                 <label for="password" class="block font-semibold text-gray-700 mb-1">Contraseña</label>
                 <div class="relative">
                     <input id="password" name="password" type="password" required minlength="6"
-                                 class="w-full border rounded px-4 py-2 pr-28 focus:ring-2 focus:ring-blue-400" placeholder="••••••••">
+                                 class="w-full border rounded px-4 py-2 pr-28 focus:ring-2 focus:ring-[#2a5adc]" placeholder="••••••••">
                     <button type="button" id="togglePwd" class="absolute right-2 top-2 bg-gray-100 px-3 py-1 rounded text-sm">Mostrar</button>
                 </div>
                 <div class="mt-2">
@@ -40,7 +41,7 @@
             <div>
                 <label for="password_confirm" class="block font-semibold text-gray-700 mb-1">Confirmar contraseña</label>
                 <input id="password_confirm" name="password_confirm" type="password" required minlength="6"
-                             class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-blue-400" placeholder="••••••••">
+                             class="w-full border rounded px-4 py-2 focus:ring-2 focus:ring-[#2a5adc]" placeholder="••••••••">
             </div>
 
             <div class="flex items-center justify-between">
