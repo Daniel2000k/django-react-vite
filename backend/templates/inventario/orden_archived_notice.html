@@ -1,0 +1,11 @@
+{% extends "inventario/base.html" %}
+{% block title %}Órdenes (Archivadas){% endblock %}
+{% block page_title %}Órdenes - Archivadas{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow">
+    <h2 class="text-xl font-semibold mb-4">📦 Órdenes archivadas</h2>
+    <p class="text-gray-700">Las vistas de gestión de Órdenes de Compra han sido archivadas porque el flujo actual usa la sección de <strong>Compras</strong>. Si necesitas restaurarlas, revisa <code>backend/archived/20251123_orders_alerts/</code>.</p>
+    <a href="{% url 'compra_lista' %}" class="mt-6 inline-block bg-blue-600 text-white px-4 py-2 rounded">Ir a Compras</a>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "inventario/base.html" %}
+
+{% block page_title %}Devolver desde Venta #{{ venta.id }}{% endblock %}
+
+{% block content %}
+<h2 class="text-2xl font-bold mb-4">Devolución - Venta #{{ venta.id }}</h2>
+<p class="mb-4">Fecha: {{ venta.fecha }} — Cajero: {{ venta.usuario.username }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="bg-white p-4 rounded shadow">
+        <h3 class="font-bold mb-3">Productos en la venta</h3>
+        <table class="min-w-full text-left">
+            <thead>
+                <tr class="bg-gray-100">
+                    <th class="px-2 py-1">Producto</th>
+                    <th class="px-2 py-1">Vendidos</th>
+                    <th class="px-2 py-1">Ya devueltos</th>
+                    <th class="px-2 py-1">A devolver</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for info in detalle_info %}
+                <tr class="border-t">
+                    <td class="px-2 py-1">
+                        {% if info.detalle.producto %}
+                            {{ info.detalle.producto.nombre }}
+                        {% else %}
+                            {{ info.detalle.producto_nombre }}
+                        {% endif %}
+                    </td>
+                    <td class="px-2 py-1">{{ info.detalle.cantidad }}</td>
+                    <td class="px-2 py-1">{{ info.cantidad_devuelta }}</td>
+                    <td class="px-2 py-1">
+                        {% if info.max_returnable > 0 %}
+                            <input type="number" name="detalle_{{ info.detalle.id }}" min="0" max="{{ info.max_returnable }}" value="0" class="border p-1 rounded w-20">
+                            <span class="text-sm text-gray-500">(máx {{ info.max_returnable }})</span>
+                        {% else %}
+                            <span class="text-sm text-red-600">No disponible para devolver</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="mt-4">
+            <label class="block text-sm">Motivo (opcional)</label>
+            <input type="text" name="motivo" class="w-full border p-2 rounded">
+        </div>
+
+        <div class="mt-4">
+            <button class="bg-blue-600 text-white px-4 py-2 rounded">Procesar devoluciones</button>
+            <a href="{% url 'ventas_for_devoluciones' %}" class="ml-4 text-gray-600">Volver al listado</a>
+        </div>
+    </div>
+</form>
+
+{% endblock %}

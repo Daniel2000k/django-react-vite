@@ -45,12 +45,19 @@
         <tbody></tbody>
     </table>
 
-    <h2>Total: $<span id="total">0.00</span></h2>
+    <h2>Total: $<span id="total">0</span></h2>
 
     <button type="submit">Guardar Compra</button>
 </form>
 
 <script>
+// Función para formatear moneda (puntos cada mil, sin decimales si es .00)
+function formatearMoneda(valor) {
+    const num = parseFloat(valor) || 0;
+    const redondeado = Math.round(num);
+    return redondeado.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
 // FILTRAR PRODUCTOS POR NOMBRE O CÓDIGO
 function filtrar() {
     const texto = document.getElementById("buscador").value.toLowerCase();
@@ -98,7 +105,7 @@ function agregarFila() {
                        onchange="actualizar()" style="width:90px;">
             </td>
 
-            <td class="subtotal">${precio.toFixed(2)}</td>
+            <td class="subtotal">${formatearMoneda(precio)}</td>
 
             <td>
                 <button type="button"
@@ -122,11 +129,11 @@ function actualizar() {
         const precio = parseFloat(row.querySelector('input[name="precio_unitario[]"]').value);
 
         const subtotal = cantidad * precio;
-        row.querySelector(".subtotal").innerText = subtotal.toFixed(2);
+        row.querySelector(".subtotal").innerText = formatearMoneda(subtotal);
 
         total += subtotal;
     });
 
-    document.getElementById("total").innerText = total.toFixed(2);
+    document.getElementById("total").innerText = formatearMoneda(total);
 }
 </script>

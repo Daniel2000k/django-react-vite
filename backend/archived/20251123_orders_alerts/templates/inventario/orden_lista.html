@@ -1,0 +1,21 @@
+{% extends "inventario/base.html" %}
+{% block title %}Órdenes de Compra{% endblock %}
+{% block page_title %}Listado de Órdenes de Compra{% endblock %}
+
+{% block content %}
+
+<div class="mb-6 flex justify-between items-center">
+    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+        <span class="mr-3 text-3xl">🧾</span> Órdenes Registradas
+    </h2>
+    <a href="{% url 'orden_crear' %}"
+       class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+        ➕ Nueva Orden
+    </a>
+</div>
+
+<div class="bg-white rounded-xl shadow overflow-hidden">
+
+    <!-- ARCHIVED: original orden lista template removed per user request -->
+    <!-- This file intentionally left blank/removed. -->
+        <thead class="bg-gray-100 border-b">

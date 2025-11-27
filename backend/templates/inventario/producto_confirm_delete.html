@@ -1,6 +1,6 @@
 {% extends 'inventario/base.html' %}
-{% block title %}Desactivar Producto - Stock Master{% endblock %}
-{% block page_title %}Desactivar Producto{% endblock %}
+{% block title %}Eliminar Producto - Stock Master{% endblock %}
+{% block page_title %}Eliminar Producto{% endblock %}
 
 {% block content %}
 
@@ -10,8 +10,8 @@
         <div class="flex items-start gap-4 mb-6">
             <div class="text-4xl">⚠️</div>
             <div>
-                <h2 class="text-2xl font-bold text-orange-600 mb-2">Desactivar Producto</h2>
-                <p class="text-gray-700">El producto se desactivará y no aparecerá en la lista, pero conservará su historial de ventas.</p>
+                <h2 class="text-2xl font-bold text-red-600 mb-2">Eliminar Producto</h2>
+                <p class="text-gray-700">Al eliminar el producto se borrará del catálogo. El historial de ventas se conservará gracias al registro en los detalles de venta.</p>
             </div>
         </div>
 
@@ -36,17 +36,17 @@
             </div>
         </div>
 
-        <div class="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-            <p class="text-orange-800">
-                <strong>Nota:</strong> El producto <strong>{{ producto.nombre }}</strong> se desactivará. Seguirá siendo visible en el historial de ventas, pero no aparecerá en la lista de productos disponibles.
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <p class="text-red-800">
+                <strong>Nota:</strong> El producto <strong>{{ producto.nombre }}</strong> será eliminado del catálogo. Las ventas ya registradas conservarán el nombre del producto en su detalle.
             </p>
         </div>
 
         <form method="POST" class="flex gap-4">
             {% csrf_token %}
             
-            <button type="submit" class="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2">
-                <span>🚫</span> Desactivar Producto
+            <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition flex items-center justify-center gap-2">
+                <span>🗑️</span> Eliminar Producto
             </button>
             
             <a href="{% url 'producto_lista' %}" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition text-center flex items-center justify-center gap-2">

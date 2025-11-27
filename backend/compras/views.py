@@ -18,7 +18,8 @@ def api_productos(request):
     """API para obtener productos con búsqueda"""
     query = request.GET.get('q', '').lower()
     
-    productos = Producto.objects.all()
+    # Solo productos activos (no mostrar los eliminados/desactivados)
+    productos = Producto.objects.filter(activo=True)
     
     if query:
         productos = productos.filter(nombre__icontains=query) | productos.filter(codigo__icontains=query)
@@ -57,7 +58,7 @@ def compra_lista(request):
 def compra_crear(request):
     """Crear nueva compra con múltiples productos"""
     proveedores = Proveedor.objects.all()
-    productos = Producto.objects.all()
+    productos = Producto.objects.filter(activo=True)
 
     if request.method == 'POST':
         proveedor_id = request.POST.get('proveedor')
@@ -74,8 +75,12 @@ def compra_crear(request):
         cantidades = request.POST.getlist('cantidad[]')
         precios = request.POST.getlist('precio_unitario[]')
 
-        # Procesar cada producto
-        for prod_id, cantidad_str, precio_str in zip(producto_ids, cantidades, precios):
+        # Procesar cada producto. Soportamos líneas sin producto_id: se puede enviar
+        # paralelo `producto_codigo[]` y `producto_nombre[]` para crear/reusar por código.
+        producto_codigos = request.POST.getlist('producto_codigo[]')
+        producto_nombres = request.POST.getlist('producto_nombre[]')
+
+        for idx, (prod_id, cantidad_str, precio_str) in enumerate(zip(producto_ids, cantidades, precios)):
             try:
                 cantidad_str = cantidad_str.strip()
                 precio_str = precio_str.strip()
@@ -83,19 +88,68 @@ def compra_crear(request):
                 if not cantidad_str or not precio_str:
                     continue
 
-                producto = Producto.objects.get(id=prod_id)
+                producto = None
+
+                # Intentar resolver por ID si viene
+                if prod_id and str(prod_id).strip():
+                    try:
+                        producto = Producto.objects.get(id=int(prod_id))
+                    except (Producto.DoesNotExist, ValueError):
+                        producto = None
+
+                # Si no se resolvió por id, intentar por código enviado en el mismo índice
+                if not producto:
+                    codigo = ''
+                    nombre = ''
+                    try:
+                        codigo = producto_codigos[idx].strip()
+                    except Exception:
+                        codigo = ''
+                    try:
+                        nombre = producto_nombres[idx].strip()
+                    except Exception:
+                        nombre = ''
+
+                    if codigo:
+                        try:
+                            producto = Producto.objects.filter(codigo=int(codigo)).first()
+                        except ValueError:
+                            producto = None
+
+                        # Crear producto mínimo si no existe (esta vista es admin-only)
+                        if not producto:
+                            try:
+                                producto = Producto.objects.create(
+                                    codigo=int(codigo),
+                                    nombre=(nombre or f"Producto {codigo}"),
+                                    precio_compra=Decimal(precio_str),
+                                    precio_venta=Decimal(precio_str),
+                                    stock=0,
+                                    activo=True
+                                )
+                            except Exception:
+                                producto = None
+
+                # Si aún no hay producto, ignorar esta línea
+                if not producto:
+                    continue
+
                 cantidad = int(cantidad_str)
                 precio = Decimal(precio_str)
 
-                if cantidad <= 0 or precio < 0:
-                    messages.error(request, f"La cantidad y el precio deben ser válidos para {producto.nombre}.")
+                # Si la cantidad es cero o negativa, ignorar la línea (no es válida para crear)
+                if cantidad <= 0:
+                    continue
+
+                if precio < 0:
+                    messages.error(request, f"El precio debe ser válido para {producto.nombre}.")
                     return redirect('compra_crear')
 
                 subtotal = cantidad * precio
                 items.append((producto, cantidad, precio, subtotal))
                 total_compra += subtotal
 
-            except (Producto.DoesNotExist, ValueError):
+            except (ValueError, IndexError):
                 # Ignorar si hay un error en un producto, pero podríamos ser más estrictos
                 continue
 

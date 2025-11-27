@@ -4,86 +4,283 @@
 
 {% block content %}
 
-<form method="post" class="bg-white p-6 rounded-xl shadow max-w-3xl mx-auto">
+<form method="post" class="bg-white p-6 rounded-xl shadow max-w-5xl mx-auto">
     {% csrf_token %}
 
-    <table class="w-full mb-6">
-        <thead class="bg-gray-100 border-b">
-            <tr>
-                <th class="px-4 py-2">Producto</th>
-                <th class="px-4 py-2">Precio</th>
-                <th class="px-4 py-2">Stock</th>
-                <th class="px-4 py-2">Cantidad</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for p in productos %}
-            <tr class="border-b">
-                <td class="px-4 py-2 font-semibold text-gray-800">{{ p.nombre }}</td>
-                <td class="px-4 py-2 text-green-700 font-medium">${{ p.precio_venta }}</td>
-                <td class="px-4 py-2">{{ p.stock }}</td>
-                <td class="px-4 py-2">
-                    <input type="number"
-                           name="prod_{{ p.id }}"
-                           min="0"
-                           max="{{ p.stock }}"
-                           class="w-24 px-2 py-1 border rounded"
-                           placeholder="0">
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- ==================== BÚSQUEDA DE PRODUCTOS ==================== -->
+    <div class="mb-6 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+        <label class="block font-bold text-lg mb-2 text-gray-800">🔍 Buscar y Agregar Productos</label>
+        <p class="text-sm text-gray-600 mb-3">Escribe el nombre o código del producto para agregarlo a la venta</p>
+        
+        <div class="relative">
+            <input 
+                id="buscar-productos" 
+                type="text" 
+                placeholder="Ej: Laptop, código 100, etc..." 
+                class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200" 
+                autocomplete="off">
+            <ul id="sugerencias" class="absolute top-full left-0 right-0 bg-white border-2 border-gray-300 rounded-lg mt-1 max-h-64 overflow-auto hidden shadow-lg z-50 list-none p-0 m-0"></ul>
+        </div>
+    </div>
 
+    <!-- ==================== TABLA DE PRODUCTOS ==================== -->
     <div class="mb-6">
-        <label class="block font-semibold mb-1">Método de Pago</label>
-        <select name="metodo_pago" id="metodo_pago"
-                class="w-full p-2 border rounded bg-gray-50">
-            <option value="EFECTIVO">Efectivo</option>
-            <option value="TARJETA">Tarjeta</option>
-            <option value="TRANSFERENCIA">Transferencia</option>
-        </select>
+        <h3 class="font-bold text-lg mb-3 text-gray-800">📦 Productos Seleccionados</h3>
+        
+        <div class="bg-gray-50 rounded-lg border-2 border-gray-200 overflow-hidden">
+            <table class="w-full" id="tabla-productos">
+                <thead class="bg-gray-200 border-b-2">
+                    <tr>
+                        <th class="px-4 py-3 text-left">Producto</th>
+                        <th class="px-4 py-3 text-center">Código</th>
+                        <th class="px-4 py-3 text-right">Precio</th>
+                        <th class="px-4 py-3 text-center">Stock</th>
+                        <th class="px-4 py-3 text-center">Cantidad</th>
+                        <th class="px-4 py-3 text-right">Subtotal</th>
+                        <th class="px-4 py-3 text-center">Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-productos">
+                </tbody>
+            </table>
+            <div id="vacio" class="p-6 text-center text-gray-500">
+                <p>📭 Sin productos. ¡Busca y agrega algunos!</p>
+            </div>
+        </div>
     </div>
 
-    <div class="mb-6">
-        <label class="block font-semibold mb-1">Descuento general</label>
-        <input type="number" step="0.01" name="descuento_general"
-               class="w-full p-2 border rounded" placeholder="Ej: 5000">
+    <!-- ==================== RESUMEN FINANCIERO ==================== -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+        <div class="text-center">
+            <p class="text-sm text-gray-600">Subtotal</p>
+            <p class="text-2xl font-bold text-gray-800">$<span id="subtotal">0.00</span></p>
+        </div>
+        <div class="text-center">
+            <p class="text-sm text-gray-600">Descuento</p>
+            <p class="text-2xl font-bold text-red-600">-$<span id="descuento-val">0.00</span></p>
+        </div>
+        <div class="text-center">
+            <p class="text-sm text-gray-600">IVA (19%)</p>
+            <p class="text-2xl font-bold text-orange-600">+$<span id="iva-val">0.00</span></p>
+        </div>
+        <div class="text-center bg-blue-100 rounded">
+            <p class="text-sm text-gray-600">Total</p>
+            <p class="text-3xl font-bold text-blue-700">$<span id="total-val">0.00</span></p>
+        </div>
     </div>
 
-    <div class="mb-6">
-        <label class="block font-semibold mb-1">IVA (19%)</label>
-        <p class="text-gray-600 text-sm">El IVA se calcula automáticamente</p>
+    <!-- ==================== CONFIGURACIÓN ==================== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+            <label class="block font-semibold mb-2">💳 Método de Pago</label>
+            <select name="metodo_pago" id="metodo_pago" class="w-full p-3 border-2 border-gray-300 rounded-lg">
+                <option value="EFECTIVO">💵 Efectivo</option>
+                <option value="TARJETA">🏦 Tarjeta</option>
+                <option value="TRANSFERENCIA">📱 Transferencia</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block font-semibold mb-2">🎁 Descuento General</label>
+            <input type="number" step="0.01" name="descuento_general" id="descuento_general" class="w-full p-3 border-2 border-gray-300 rounded-lg" value="0" min="0">
+        </div>
+
+        <div id="div-monto" class="md:col-span-2 hidden">
+            <label class="block font-semibold mb-2">💰 Monto Recibido</label>
+            <input type="number" step="0.01" name="monto_recibido" id="monto_recibido" class="w-full p-3 border-2 border-gray-300 rounded-lg" value="0" min="0">
+            <p class="text-sm text-gray-600 mt-1">Cambio: $<span id="cambio-val">0.00</span></p>
+        </div>
+
+        <div class="md:col-span-2">
+            <label class="block font-semibold mb-2">📧 Correo del Cliente</label>
+            <input type="email" name="email_cliente" class="w-full p-3 border-2 border-gray-300 rounded-lg" placeholder="cliente@correo.com" required>
+        </div>
     </div>
 
-    <div id="pago_efectivo" class="mb-6">
-        <label class="block font-semibold mb-1">
-            Monto recibido (solo efectivo)
-        </label>
-        <input type="number"
-               step="0.01"
-               name="monto_recibido"
-               class="w-full p-2 border rounded"
-               placeholder="Ejemplo: 50000">
-    </div>
-
-    <button type="submit"
-            class="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold w-full">
+    <!-- ==================== BOTÓN ==================== -->
+    <button type="submit" id="btn-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-bold text-lg transition disabled:bg-gray-400 disabled:cursor-not-allowed">
         💰 Registrar Venta
     </button>
+
+    <!-- Inputs hidden para productos -->
+    <div id="inputs-hidden"></div>
 </form>
 
 <script>
-    document.getElementById('metodo_pago').addEventListener('change', function() {
-        const pagoEfectivoDiv = document.getElementById('pago_efectivo');
-        // Muestra el campo 'Monto recibido' solo si el método de pago es 'EFECTIVO'
-        pagoEfectivoDiv.style.display = (this.value === 'EFECTIVO') ? 'block' : 'none';
+// Función para formatear moneda (puntos cada mil, sin decimales si es .00)
+function formatearMoneda(valor) {
+    const num = parseFloat(valor) || 0;
+    const redondeado = Math.round(num);
+    return redondeado.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
+
+let carrito = {}; // {id_producto: {id, nombre, codigo, precio, stock, cantidad}}
+
+const inputBuscar = document.getElementById('buscar-productos');
+const ulSugerencias = document.getElementById('sugerencias');
+
+// Buscar productos
+inputBuscar.addEventListener('input', async (e) => {
+    const q = e.target.value.trim();
+    if (!q || q.length < 1) {
+        ulSugerencias.classList.add('hidden');
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/inventario/api/productos/buscar/?q=${encodeURIComponent(q)}`);
+        if (!resp.ok) throw new Error('Error en búsqueda');
+        const productos = await resp.json();
+
+        if (productos.length === 0) {
+            ulSugerencias.innerHTML = '<li class="px-4 py-2 text-gray-500">No encontrado</li>';
+            ulSugerencias.classList.remove('hidden');
+            return;
+        }
+
+        ulSugerencias.innerHTML = productos.map(p => `
+            <li class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b transition" data-id="${p.id}" data-nombre="${p.nombre}" data-codigo="${p.codigo}" data-precio="${p.precio_venta}" data-stock="${p.stock}">
+                <div class="font-semibold text-gray-800">${p.nombre}</div>
+                <div class="text-sm text-gray-600">Cod: ${p.codigo} | $${formatearMoneda(p.precio_venta)} | Stock: ${p.stock}</div>
+            </li>
+        `).join('');
+        ulSugerencias.classList.remove('hidden');
+    } catch (err) {
+        console.error(err);
+        ulSugerencias.classList.add('hidden');
+    }
+});
+
+// Click en sugerencia
+ulSugerencias.addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-id]');
+    if (!li) return;
+
+    const id = li.dataset.id;
+    const nombre = li.dataset.nombre;
+    const codigo = li.dataset.codigo;
+    const precio = parseFloat(li.dataset.precio);
+    const stock = parseInt(li.dataset.stock);
+
+    if (carrito[id]) {
+        // Aumentar cantidad
+        if (carrito[id].cantidad < stock) {
+            carrito[id].cantidad++;
+        }
+    } else {
+        // Agregar nuevo
+        carrito[id] = {
+            id, nombre, codigo, precio, stock, cantidad: 1
+        };
+    }
+
+    renderCarrito();
+    inputBuscar.value = '';
+    ulSugerencias.classList.add('hidden');
+});
+
+function renderCarrito() {
+    const tbody = document.getElementById('tbody-productos');
+    const vacio = document.getElementById('vacio');
+    const items = Object.values(carrito);
+
+    if (items.length === 0) {
+        tbody.innerHTML = '';
+        vacio.classList.remove('hidden');
+        document.getElementById('btn-submit').disabled = true;
+        return;
+    }
+
+    vacio.classList.add('hidden');
+    document.getElementById('btn-submit').disabled = false;
+
+    tbody.innerHTML = items.map(p => {
+        const subtotal = (p.precio * p.cantidad).toFixed(2);
+        return `
+            <tr class="border-b hover:bg-gray-100">
+                <td class="px-4 py-3 font-semibold">${p.nombre}</td>
+                <td class="px-4 py-3 text-center text-gray-600">${p.codigo}</td>
+                <td class="px-4 py-3 text-right text-green-700 font-bold">$${formatearMoneda(p.precio)}</td>
+                <td class="px-4 py-3 text-center text-blue-600">${p.stock}</td>
+                <td class="px-4 py-3 text-center">
+                    <input type="number" value="${p.cantidad}" min="1" max="${p.stock}" class="w-16 p-1 border rounded text-center input-cant" data-id="${p.id}">
+                </td>
+                <td class="px-4 py-3 text-right font-bold">$${formatearMoneda(subtotal)}</td>
+                <td class="px-4 py-3 text-center">
+                    <button type="button" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded btn-del" data-id="${p.id}">🗑️</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // Input cantidad
+    document.querySelectorAll('.input-cant').forEach(inp => {
+        inp.addEventListener('change', function() {
+            const id = this.dataset.id;
+            const cant = parseInt(this.value) || 1;
+            if (cant > 0 && cant <= carrito[id].stock) {
+                carrito[id].cantidad = cant;
+            } else {
+                this.value = carrito[id].cantidad;
+            }
+            renderCarrito();
+            calcularTotales();
+        });
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Ejecuta la función al cargar la página para establecer el estado inicial
-        document.getElementById('metodo_pago').dispatchEvent(new Event('change'));
+    // Botón eliminar
+    document.querySelectorAll('.btn-del').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            delete carrito[btn.dataset.id];
+            renderCarrito();
+            calcularTotales();
+        });
     });
+
+    calcularTotales();
+}
+
+function calcularTotales() {
+    let subtotal = Object.values(carrito).reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+    const desc = parseFloat(document.getElementById('descuento_general').value) || 0;
+    const conDesc = subtotal - desc;
+    const iva = conDesc * 0.19;
+    const total = conDesc + iva;
+    const monto = parseFloat(document.getElementById('monto_recibido').value) || 0;
+    const cambio = Math.max(0, monto - total);
+
+    document.getElementById('subtotal').textContent = formatearMoneda(subtotal);
+    document.getElementById('descuento-val').textContent = formatearMoneda(desc);
+    document.getElementById('iva-val').textContent = formatearMoneda(iva);
+    document.getElementById('total-val').textContent = formatearMoneda(total);
+    document.getElementById('cambio-val').textContent = formatearMoneda(cambio);
+}
+
+document.getElementById('descuento_general').addEventListener('input', calcularTotales);
+document.getElementById('monto_recibido').addEventListener('input', calcularTotales);
+
+document.getElementById('metodo_pago').addEventListener('change', function() {
+    document.getElementById('div-monto').classList.toggle('hidden', this.value !== 'EFECTIVO');
+});
+
+// Generar inputs hidden al enviar
+document.querySelector('form').addEventListener('submit', (e) => {
+    if (Object.keys(carrito).length === 0) {
+        e.preventDefault();
+        alert('Agrega al menos un producto');
+        return;
+    }
+
+    const div = document.getElementById('inputs-hidden');
+    div.innerHTML = Object.entries(carrito).map(([id, p]) => 
+        `<input type="hidden" name="prod_${id}" value="${p.cantidad}">`
+    ).join('');
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('metodo_pago').dispatchEvent(new Event('change'));
+});
 </script>
 
 {% endblock %}

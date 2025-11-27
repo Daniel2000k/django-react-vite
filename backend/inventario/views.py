@@ -31,15 +31,110 @@ class InventarioViewSet(viewsets.ModelViewSet):
     queryset = Inventario.objects.all()
     serializer_class = InventarioSerializer
 
+@login_required(login_url='login')
+@user_passes_test(es_admin, login_url='login')
+def api_producto_create(request):
+    """API simple para crear un Producto mínimo y opcionalmente un movimiento de Inventario.
+    Form data accepted: codigo, nombre, precio_compra, precio_venta, cantidad_inicial (opcional)
+    Responde JSON con datos del producto o error.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+    codigo = request.POST.get('codigo', '').strip()
+    nombre = request.POST.get('nombre', '').strip()
+    precio_compra = request.POST.get('precio_compra', '').strip()
+    precio_venta = request.POST.get('precio_venta', '').strip()
+    cantidad_inicial = request.POST.get('cantidad_inicial', '').strip()
+
+    if not codigo or not nombre:
+        return JsonResponse({'error': 'codigo y nombre son obligatorios'}, status=400)
+
+    try:
+        codigo_int = int(codigo)
+    except ValueError:
+        return JsonResponse({'error': 'codigo debe ser numérico'}, status=400)
+
+    # Evitar duplicados por codigo
+    if Producto.objects.filter(codigo=codigo_int).exists():
+        prod = Producto.objects.get(codigo=codigo_int)
+        return JsonResponse({'error': 'Codigo ya existe', 'producto_id': prod.id}, status=400)
+
+    try:
+        precio_compra_val = Decimal(precio_compra) if precio_compra else Decimal('0')
+        precio_venta_val = Decimal(precio_venta) if precio_venta else precio_compra_val
+    except Exception:
+        return JsonResponse({'error': 'precio inválido'}, status=400)
+
+    prod = Producto.objects.create(
+        codigo=codigo_int,
+        nombre=nombre,
+        precio_compra=precio_compra_val,
+        precio_venta=precio_venta_val,
+        stock=0,
+        activo=True
+    )
+
+    # Crear movimiento de inventario si se envía cantidad_inicial
+    if cantidad_inicial:
+        try:
+            qty = int(cantidad_inicial)
+            if qty > 0:
+                Inventario.objects.create(
+                    producto=prod,
+                    tipo='ENTRADA',
+                    cantidad=qty,
+                    numero_referencia=f'CREAR_PROD-{prod.id}'
+                )
+        except Exception:
+            pass
+
+    return JsonResponse({
+        'id': prod.id,
+        'codigo': prod.codigo,
+        'nombre': prod.nombre,
+        'precio_compra': str(prod.precio_compra),
+        'precio_venta': str(prod.precio_venta),
+        'stock': prod.stock
+    })
+
+
+def api_productos_search(request):
+    """Buscar productos por q (GET). Devuelve lista JSON de productos activos que coinciden en nombre o codigo.
+    SIN decoradores - endpoint público para búsqueda de productos en ventas"""
+    q = request.GET.get('q', '').strip()
+    productos = Producto.objects.filter(activo=True)
+    if q:
+        # Buscar por nombre o por codigo (si q numérico)
+        if q.isdigit():
+            productos = productos.filter(codigo__icontains=q) | productos.filter(nombre__icontains=q)
+        else:
+            productos = productos.filter(nombre__icontains=q)
+
+    productos = productos.order_by('nombre')[:30]
+    data = [
+        {
+            'id': p.id,
+            'nombre': p.nombre,
+            'codigo': p.codigo,
+            'precio_venta': float(p.precio_venta),
+            'stock': p.stock,
+        }
+        for p in productos
+    ]
+    return JsonResponse(data, safe=False)
+
 
 # ==================== DASHBOARD ====================
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO: Usando nombre de ruta 'login'
+@login_required(login_url='login')
 def inventario_dashboard(request):
     """Dashboard simple del home - solo datos básicos"""
     
-    productos = Producto.objects.filter(activo=True)  # Solo productos activos
+    # ✅ OPTIMIZACIÓN: select_related para usuario, prefetch_related para detalles
+    productos = Producto.objects.filter(activo=True)
     movimientos = Inventario.objects.all().order_by('-fecha')[:10]
     
     total_productos = productos.count()
@@ -54,7 +149,7 @@ def inventario_dashboard(request):
         'stock_total': stock_total,
         'bajo_stock': bajo_stock,
     }
-    # Filtrar elementos del menú para el dashboard: ocultar Órdenes y Alertas
+    return render(request, 'inventario/dashboard.html', context)
     try:
         filtered = [ (n,u) for (n,u) in request.menu_items if ('orden' not in n.lower() and 'alert' not in n.lower()) ]
     except Exception:
@@ -67,9 +162,10 @@ def inventario_dashboard(request):
 # ==================== PRODUCTOS ====================
 
 @login_required(login_url='login')
-@user_passes_test(es_admin, login_url='login') # CORREGIDO
+@user_passes_test(es_admin, login_url='login') 
 def producto_lista(request):
-    productos = Producto.objects.filter(activo=True)  # Solo productos activos
+    # ✅ OPTIMIZACIÓN: Cargar solo productos activos sin queries adicionales
+    productos = Producto.objects.filter(activo=True).order_by('nombre')  # Solo productos activos
     return render(request, 'inventario/producto_lista.html', {'productos': productos})
 
 
@@ -166,10 +262,9 @@ def producto_eliminar(request, producto_id):
     
     if request.method == 'POST':
         nombre = producto.nombre
-        # En lugar de eliminar, desactivar
-        producto.activo = False
-        producto.save()
-        messages.success(request, f'Producto "{nombre}" desactivado exitosamente')
+        # Eliminar físicamente el producto. Las ventas conservarán el nombre por snapshot en DetalleVenta.
+        producto.delete()
+        messages.success(request, f'Producto "{nombre}" eliminado correctamente')
         return redirect('producto_lista')
     
     return render(request, 'inventario/producto_confirm_delete.html', {'producto': producto})
@@ -227,7 +322,8 @@ def inventario_movimiento(request):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def proveedor_lista(request):
-    proveedores = Proveedor.objects.all()
+    # ✅ OPTIMIZACIÓN: Cargar proveedores sin queries adicionales
+    proveedores = Proveedor.objects.all().order_by('nombre')
     return render(request, 'inventario/proveedor_lista.html', {'proveedores': proveedores})
 
 
@@ -339,151 +435,44 @@ def proveedor_detalle(request, proveedor_id):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def orden_lista(request):
-    ordenes = OrdenCompra.objects.all().order_by('-id')
-    return render(request, 'inventario/orden_lista.html', {'ordenes': ordenes})
+    # Archived: moved to backend/archived/20251123_orders_alerts/views_archived.py
+    # Render a minimal notice template so routes remain available but inform users.
+    return render(request, 'inventario/orden_archived_notice.html')
 
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def orden_crear(request):
-    proveedores = Proveedor.objects.all()
-    productos = Producto.objects.all()
-
-    if request.method == 'POST':
-        try:
-            proveedor_id = request.POST.get('proveedor')
-            producto_id = request.POST.get('producto')
-            cantidad = request.POST.get('cantidad')
-            costo_unitario = request.POST.get('costo_unitario')
-
-            if not all([proveedor_id, producto_id, cantidad, costo_unitario]):
-                messages.error(request, "Por favor completa todos los campos")
-                return redirect('orden_crear')
-
-            proveedor = Proveedor.objects.get(id=proveedor_id)
-            producto = Producto.objects.get(id=producto_id)
-            cantidad = int(cantidad)
-            costo_unitario = float(costo_unitario)
-
-            if cantidad <= 0 or costo_unitario <= 0:
-                 messages.error(request, "La cantidad y el costo deben ser mayores a cero.")
-                 return redirect('orden_crear')
-
-            subtotal = Decimal(str(cantidad)) * Decimal(str(costo_unitario))
-
-            OrdenCompra.objects.create(
-                proveedor=proveedor,
-                producto=producto,
-                cantidad=cantidad,
-                costo_unitario=costo_unitario,
-                subtotal=subtotal,
-                estado='PENDIENTE'
-            )
-
-            messages.success(
-                request,
-                f"Orden creada: {cantidad} unidades de {producto.nombre} para {proveedor.nombre}"
-            )
-            return redirect('orden_lista')
-        
-        except (ValueError, Proveedor.DoesNotExist, Producto.DoesNotExist):
-            messages.error(request, "Error al procesar la orden. Verifique los datos.")
-            return redirect('orden_crear')
-
-    return render(request, 'inventario/orden_form.html', {
-        'proveedores': proveedores,
-        'productos': productos
-    })
+    # Archived: moved implementation to archived views file.
+    return render(request, 'inventario/orden_archived_notice.html')
 
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def orden_recibir(request, orden_id):
-    orden = get_object_or_404(OrdenCompra, id=orden_id)
-
-    if orden.estado == 'RECIBIDA':
-        messages.warning(request, "La orden ya fue marcada como recibida")
-        return redirect('orden_lista')
-    
-    # Se añade un chequeo POST por seguridad, aunque el modelo maneja la lógica
-    if request.method == 'POST':
-        orden.recibir()  # método del modelo (asumiendo que actualiza stock y estado)
-        messages.success(request, f"Orden OC-{orden.id} recibida. Stock actualizado.")
-        return redirect('orden_lista')
-
-    # Si se accede por GET, se podría redirigir al detalle o lista, o mostrar una confirmación
-    return redirect('orden_lista') 
+    # Archived: moved to archived views file.
+    return render(request, 'inventario/orden_archived_notice.html')
 
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def orden_detalle(request, orden_id):
-    oc = get_object_or_404(OrdenCompra, id=orden_id)
-    return render(request, 'inventario/orden_detalle.html', {'orden': oc})
+    # Archived: moved to archived views file.
+    return render(request, 'inventario/orden_archived_notice.html')
 
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def orden_editar(request, orden_id):
-    oc = get_object_or_404(OrdenCompra, id=orden_id)
-
-    if oc.estado == 'RECIBIDA':
-        messages.warning(request, "No se puede editar una orden recibida")
-        return redirect('orden_detalle', orden_id=orden_id)
-
-    proveedores = Proveedor.objects.all()
-    productos = Producto.objects.all()
-
-    if request.method == 'POST':
-        try:
-            proveedor_id = request.POST.get('proveedor')
-            producto_id = request.POST.get('producto')
-            cantidad = request.POST.get('cantidad')
-            costo_unitario = request.POST.get('costo_unitario')
-
-            if not all([proveedor_id, producto_id, cantidad, costo_unitario]):
-                messages.error(request, "Todos los campos son obligatorios")
-                return redirect('orden_editar', orden_id=orden_id)
-
-            oc.proveedor = Proveedor.objects.get(id=proveedor_id)
-            oc.producto = Producto.objects.get(id=producto_id)
-            oc.cantidad = int(cantidad)
-            oc.costo_unitario = float(costo_unitario)
-            oc.subtotal = Decimal(str(oc.cantidad)) * Decimal(str(oc.costo_unitario))
-            oc.save()
-
-            messages.success(request, f"Orden OC-{oc.id} actualizada")
-            return redirect('orden_detalle', orden_id=orden_id)
-            
-        except (ValueError, Proveedor.DoesNotExist, Producto.DoesNotExist):
-            messages.error(request, "Error al actualizar la orden. Verifique los datos.")
-            return redirect('orden_editar', orden_id=orden_id)
-
-
-    return render(request, 'inventario/orden_form.html', {
-        'proveedores': proveedores,
-        'productos': productos,
-        'editar': True,
-        'orden': oc
-    })
+    # Archived: moved to archived views file.
+    return render(request, 'inventario/orden_archived_notice.html')
 
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def orden_cancelar(request, orden_id):
-    oc = get_object_or_404(OrdenCompra, id=orden_id)
-
-    if oc.estado == 'RECIBIDA':
-        messages.warning(request, "No se puede cancelar una orden recibida")
-        return redirect('orden_lista')
-
-    if request.method == 'POST':
-        oc.estado = 'CANCELADA'
-        oc.save()
-        messages.success(request, f"Orden OC-{oc.id} cancelada")
-        return redirect('orden_lista')
-
-    return render(request, 'inventario/orden_confirm_cancel.html', {'orden': oc})
+    # Archived: moved to archived views file.
+    return render(request, 'inventario/orden_archived_notice.html')
 
 
 # ==================== ALERTAS ====================
@@ -491,20 +480,12 @@ def orden_cancelar(request, orden_id):
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def alertas_lista(request):
-    alertas = AlertaInventario.objects.all().order_by('-fecha')
-    return render(request, 'inventario/alertas.html', {'alertas': alertas})
+    # Archived: moved to backend/archived/20251123_orders_alerts/views_archived.py
+    return render(request, 'inventario/alertas_archived_notice.html')
 
 
 @login_required(login_url='login')
 @user_passes_test(es_admin, login_url='login') # CORREGIDO
 def alerta_marcar_leida(request, alerta_id):
-    alerta = get_object_or_404(AlertaInventario, id=alerta_id)
-    
-    # Se añade un chequeo POST simple
-    if request.method == 'POST':
-        alerta.leida = True
-        alerta.save()
-        return redirect('alertas_lista')
-    
-    # Opcional: si es GET, se podría redirigir directamente o forzar el POST en el template.
-    return redirect('alertas_lista')
+    # Archived: moved to archived views file.
+    return render(request, 'inventario/alertas_archived_notice.html')

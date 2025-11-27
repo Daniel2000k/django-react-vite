@@ -1,0 +1,42 @@
+{% extends "inventario/base.html" %}
+
+{% block page_title %}Devoluciones registradas{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+    <h2 class="text-2xl font-bold">Devoluciones</h2>
+    <a href="{% url 'ventas_for_devoluciones' %}" class="bg-green-600 text-white px-4 py-2 rounded">Nueva Devolución</a>
+</div>
+
+<div class="bg-white p-4 rounded shadow">
+    <table class="min-w-full text-left">
+        <thead class="bg-gray-100">
+            <tr>
+                <th class="px-2 py-1">ID</th>
+                <th class="px-2 py-1">Venta</th>
+                <th class="px-2 py-1">Producto</th>
+                <th class="px-2 py-1">Cantidad</th>
+                <th class="px-2 py-1">Usuario</th>
+                <th class="px-2 py-1">Fecha</th>
+                <th class="px-2 py-1">Motivo</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in devoluciones %}
+            <tr class="border-t">
+                <td class="px-2 py-1">{{ d.id }}</td>
+                <td class="px-2 py-1">{% if d.venta %}<a href="{% url 'devolver_desde_venta' d.venta.id %}">Venta #{{ d.venta.id }}</a>{% else %}-{% endif %}</td>
+                <td class="px-2 py-1">{% if d.producto %}{{ d.producto.nombre }}{% else %}{% endif %}</td>
+                <td class="px-2 py-1">{{ d.cantidad }}</td>
+                <td class="px-2 py-1">{% if d.usuario %}{{ d.usuario.username }}{% else %}{% endif %}</td>
+                <td class="px-2 py-1">{{ d.fecha }}</td>
+                <td class="px-2 py-1">{{ d.motivo }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="px-2 py-1">No hay devoluciones registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     
     # Vistas de ventas
-    venta_lista, venta_crear, venta_detalle, venta_factura_pdf, mis_ventas # <-- ¡AÑADIDA mis_ventas al import!
+    venta_lista, venta_crear, venta_detalle, venta_factura_pdf, mis_ventas,
+    producto_json,productos_search_json# <-- ¡AÑADIDA mis_ventas al import!
 )
 
 # Inicialización de router si se usa (aunque no se usa en este ejemplo, se mantiene la estructura)
@@ -21,4 +22,7 @@ urlpatterns = [
     
     # NUEVA URL para "Mis Ventas"
     path('mis-ventas/', mis_ventas, name='mis_ventas'), 
+     path('api/productos-search/', productos_search_json, name='ventas_productos_search'),
+    path('api/producto/<int:producto_id>/', producto_json, name='ventas_producto_json'),
+
 ]

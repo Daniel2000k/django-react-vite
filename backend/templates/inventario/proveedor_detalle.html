@@ -19,7 +19,7 @@
 
 <div class="bg-white rounded-xl shadow overflow-hidden">
     <div class="px-6 py-4 border-b">
-        <h3 class="font-semibold">Historial de Órdenes</h3>
+        <h3 class="font-semibold">Historial de Órdenes (Archivado)</h3>
     </div>
 
     {% if ordenes %}
@@ -43,11 +43,7 @@
                 <td class="px-6 py-3">${{ oc.subtotal }}</td>
                 <td class="px-6 py-3">{{ oc.estado }}</td>
                 <td class="px-6 py-3">
-                    <a href="{% url 'orden_detalle' oc.id %}" class="text-blue-600 hover:underline mr-2">Ver</a>
-                    {% if oc.estado == 'PENDIENTE' %}
-                        <a href="{% url 'orden_editar' oc.id %}" class="text-yellow-600 hover:underline mr-2">Editar</a>
-                        <a href="{% url 'orden_cancelar' oc.id %}" class="text-red-600 hover:underline">Cancelar</a>
-                    {% endif %}
+                    <span class="text-gray-600">Archivado</span>
                 </td>
             </tr>
             {% endfor %}

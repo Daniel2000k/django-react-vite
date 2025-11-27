@@ -1,0 +1,31 @@
+{% extends "inventario/base.html" %}
+
+{% block page_title %}Seleccionar Venta para Devolución{% endblock %}
+
+{% block content %}
+<h2 class="text-2xl font-bold mb-4">Ventas recientes</h2>
+<table class="min-w-full bg-white shadow rounded">
+    <thead class="bg-gray-100">
+        <tr>
+            <th class="px-4 py-2">ID</th>
+            <th class="px-4 py-2">Fecha</th>
+            <th class="px-4 py-2">Cajero</th>
+            <th class="px-4 py-2">Total</th>
+            <th class="px-4 py-2">Acción</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for v in ventas %}
+        <tr class="border-t">
+            <td class="px-4 py-2">{{ v.id }}</td>
+            <td class="px-4 py-2">{{ v.fecha }}</td>
+            <td class="px-4 py-2">{{ v.usuario.username }}</td>
+            <td class="px-4 py-2">${{ v.total_final }}</td>
+            <td class="px-4 py-2"><a href="{% url 'devolver_desde_venta' v.id %}" class="text-blue-600">Devolver</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="px-4 py-2">No hay ventas.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

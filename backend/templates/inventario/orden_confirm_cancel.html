@@ -1,16 +1,2 @@
-{% extends "inventario/base.html" %}
-{% block title %}Cancelar OC-{{ orden.id }}{% endblock %}
-{% block page_title %}Cancelar Orden{% endblock %}
-
-{% block content %}
-<div class="max-w-xl mx-auto bg-white rounded-xl shadow p-8 text-center">
-    <p class="text-lg mb-6">¿Deseas cancelar la orden <strong>OC-{{ orden.id }}</strong>?</p>
-    <form method="post">
-        {% csrf_token %}
-        <div class="flex gap-4 justify-center">
-            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg">Sí, cancelar</button>
-            <a href="{% url 'orden_detalle' orden.id %}" class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-lg">No</a>
-        </div>
-    </form>
-</div>
-{% endblock %}
+<!-- REMOVED: orden_confirm_cancel template cleared per user request -->
+<!-- File removed to clean unused ordenes UI. -->

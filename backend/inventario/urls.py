@@ -4,12 +4,13 @@ from .views import (
     ProductoViewSet, InventarioViewSet,
     inventario_dashboard, producto_lista, producto_crear, producto_editar, producto_eliminar, inventario_movimiento,
     proveedor_lista, proveedor_crear,
-    orden_lista, orden_crear, orden_recibir,
-    alertas_lista, alerta_marcar_leida,
+    # Órdenes y alertas archivadas (ver backend/archived/20251123_orders_alerts)
     proveedor_editar, proveedor_eliminar, proveedor_detalle,
     orden_detalle, orden_editar, orden_cancelar,verificar_codigo_producto,
     verificar_correo_proveedor
 )
+from .views import api_producto_create
+from .views import api_productos_search
 from ventas.views import (
     venta_lista, venta_crear, venta_detalle, venta_factura_pdf
 )
@@ -43,18 +44,9 @@ urlpatterns = [
     path('proveedores/eliminar/<int:proveedor_id>/', proveedor_eliminar, name='proveedor_eliminar'),
     path('proveedores/<int:proveedor_id>/', proveedor_detalle, name='proveedor_detalle'),
 
-    # Órdenes de compra
-    path('ordenes/', orden_lista, name='orden_lista'),
-    path('ordenes/crear/', orden_crear, name='orden_crear'),
-    path('ordenes/recibir/<int:orden_id>/', orden_recibir, name='orden_recibir'),
-    # Ordenes: detalle, editar, cancelar
-    path('ordenes/<int:orden_id>/', orden_detalle, name='orden_detalle'),
-    path('ordenes/editar/<int:orden_id>/', orden_editar, name='orden_editar'),
-    path('ordenes/cancelar/<int:orden_id>/', orden_cancelar, name='orden_cancelar'),
-
-    # Alertas
-    path('alertas/', alertas_lista, name='alertas_lista'),
-    path('alertas/leida/<int:alerta_id>/', alerta_marcar_leida, name='alerta_marcar_leida'),
+    # Órdenes de compra y Alertas: archivadas.
+    # Si necesitas restaurarlas mueve los archivos desde `backend/archived/20251123_orders_alerts/`
+    # y añade las rutas correspondientes aquí.
 
     # Ventas
     path('ventas/', venta_lista, name='venta_lista'),
@@ -63,6 +55,8 @@ urlpatterns = [
     # Nueva URL para factura PDF
     path('ventas/<int:venta_id>/factura/', venta_factura_pdf, name='venta_factura_pdf'),  # <-- AGREGADO
 
-    # API REST
+    # ⭐ API REST - RUTAS ESPECÍFICAS PRIMERO (antes del router)
+    path('api/productos/buscar/', api_productos_search, name='api_productos_search'),
+    path('api/productos/crear/', api_producto_create, name='api_producto_create'),
     path('api/', include(router.urls)),
 ]

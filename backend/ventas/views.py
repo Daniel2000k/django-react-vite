@@ -3,14 +3,137 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Venta, DetalleVenta
 from inventario.models import Producto, Inventario
-from rest_framework import viewsets # opcional, si se planea usar viewsets aquí
+from django.http import JsonResponse  # opcional, si se planea usar viewsets aquí
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_GET
 from decimal import Decimal
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from django.contrib import messages
+from django.core.mail import EmailMessage
+from django.conf import settings
+from io import BytesIO
 
 # Importación de la función de chequeo de Admin/Cajero (aunque usaremos lambda)
-from accounts.views import es_admin, es_cajero # Importar las funciones (aunque se usa lambda)
+from accounts.views import es_admin, es_cajero  # Importar las funciones (aunque se usa lambda)
+
+
+# ==================== FUNCIÓN AUXILIAR: GENERAR Y ENVIAR FACTURA ====================
+
+def generar_pdf_factura(venta):
+    """Genera el PDF de la factura en memoria y lo retorna"""
+    buffer = BytesIO()
+    p = canvas.Canvas(buffer, pagesize=letter)
+
+    y = 750
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, y, f"Factura Venta #{venta.id}")
+    y -= 40
+
+    p.setFont("Helvetica", 12)
+    p.drawString(50, y, f"Fecha: {venta.fecha.strftime('%Y-%m-%d %H:%M:%S')}")
+    y -= 20
+    p.drawString(50, y, f"Cajero: {venta.usuario.email}")
+    y -= 20
+    p.drawString(50, y, f"Método de pago: {venta.metodo_pago}")
+    y -= 20
+    p.drawString(50, y, f"Cliente: {venta.email_cliente or 'No registrado'}")
+    y -= 30
+
+    p.drawString(50, y, "Detalle:")
+    y -= 20
+
+    for item in venta.detalles.all():
+        nombre_producto = item.producto.nombre if item.producto else item.producto_nombre
+        p.drawString(60, y, f"{nombre_producto} x {item.cantidad} = ${item.subtotal}")
+        y -= 20
+
+    y -= 20
+    p.drawString(50, y, f"Subtotal: ${venta.total}")
+    y -= 20
+    p.drawString(50, y, f"Descuento: -${venta.descuento_general}")
+    y -= 20
+    p.drawString(50, y, f"IVA ({venta.iva_porcentaje}%): ${venta.iva_total}")
+    y -= 30
+
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(50, y, f"TOTAL FINAL: ${venta.total_final}")
+    y -= 25
+
+    p.showPage()
+    p.save()
+
+    pdf_data = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_data
+
+
+def enviar_factura_email(venta):
+    """Envía la factura por email al cliente"""
+    try:
+        # Determinar email destino
+        email_destino = venta.email_cliente if venta.email_cliente else venta.usuario.email
+        
+        if not email_destino:
+            print(f"⚠️  No hay email de destino para la venta #{venta.id}")
+            return False
+        
+        # Generar PDF
+        pdf_data = generar_pdf_factura(venta)
+        
+        # Crear email
+        asunto = f"📄 Factura de Venta #{venta.id} - Stock Master"
+        
+        cuerpo = f"""
+Estimado cliente,
+
+Le agradecemos su compra. Adjuntamos la factura de su transacción.
+
+📋 DETALLES DE LA VENTA:
+- ID de Venta: {venta.id}
+- Fecha: {venta.fecha.strftime('%d/%m/%Y %H:%M:%S')}
+- Subtotal: ${venta.total:.2f}
+- Descuento: -${venta.descuento_general:.2f}
+- IVA (19%): ${venta.iva_total:.2f}
+- 💰 TOTAL A PAGAR: ${venta.total_final:.2f}
+- Método de pago: {venta.metodo_pago}
+
+¡Gracias por su compra!
+
+Saludos,
+Stock Master
+        """
+        
+        email = EmailMessage(
+            subject=asunto,
+            body=cuerpo,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[email_destino],
+        )
+        
+        # Adjuntar PDF
+        email.attach(
+            f"Factura_Venta_{venta.id}.pdf",
+            pdf_data,
+            "application/pdf"
+        )
+        
+        # Enviar
+        resultado = email.send()
+        
+        if resultado:
+            print(f"✅ Factura enviada exitosamente a {email_destino}")
+            return True
+        else:
+            print(f"⚠️  Email no se envió (send() retornó 0) a {email_destino}")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error enviando factura a {email_destino}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 # ==================== VENTAS ====================
@@ -25,14 +148,12 @@ def venta_lista(request):
     """
     user = request.user
 
+    # ✅ OPTIMIZACIÓN: select_related para usuario reduce N+1 queries
     if user.rol == "ADMIN":
-        # ADMIN ve TODAS las ventas ordenadas por ID descendente
-        ventas = Venta.objects.all().order_by('-id')
+        ventas = Venta.objects.select_related('usuario').order_by('-id')
     else:
-        # CAJERO ve SOLO sus ventas ordenadas por ID descendente
-        ventas = Venta.objects.filter(usuario=user).order_by('-id')
+        ventas = Venta.objects.filter(usuario=user).select_related('usuario').order_by('-id')
 
-    # Nota: Se utiliza 'venta_lista.html' tal como está en el código original.
     return render(request, 'inventario/venta_lista.html', {'ventas': ventas})
 
 
@@ -40,7 +161,6 @@ def venta_lista(request):
 @user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_crear(request):
     """Crear nueva venta (Solo ADMIN/CAJERO)."""
-    productos = Producto.objects.all()
 
     if request.method == 'POST':
         items = []
@@ -118,6 +238,9 @@ def venta_crear(request):
 
         cambio = (monto_recibido - total_final) if metodo_pago == "EFECTIVO" else Decimal("0")
 
+        # Capturar correo del cliente
+        email_cliente = request.POST.get("email_cliente")
+
         # Crear venta
         venta = Venta.objects.create(
             total=total,
@@ -128,7 +251,8 @@ def venta_crear(request):
             metodo_pago=metodo_pago,
             monto_recibido=monto_recibido,
             cambio=cambio,
-            usuario=request.user
+            usuario=request.user,
+            email_cliente=email_cliente  # ⬅️ nuevo
         )
 
         # Guardar detalles + descontar stock
@@ -141,7 +265,6 @@ def venta_crear(request):
                 subtotal=subtotal
             )
 
-            # Movimiento de inventario (SALIDA)
             Inventario.objects.create(
                 producto=producto,
                 tipo="SALIDA",
@@ -150,21 +273,32 @@ def venta_crear(request):
             )
 
         messages.success(request, f"Venta #{venta.id} registrada correctamente")
+        
+        # ✅ ENVIAR EMAIL INMEDIATAMENTE DESPUÉS DE CREAR LA VENTA
+        enviar_factura_email(venta)
+        
         return redirect('venta_detalle', venta_id=venta.id)
 
-    return render(request, 'inventario/venta_crear.html', {'productos': productos})
+    # GET: Mostrar formulario vacío (sin productos estáticos)
+    return render(request, 'inventario/venta_crear.html')
 
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_detalle(request, venta_id):
     """Ver detalle de una venta, solo si es de ADMIN o si es su propia venta."""
-    venta = get_object_or_404(Venta, id=venta_id)
+    # ✅ OPTIMIZACIÓN: prefetch_related para detalles y productos evita N+1 queries
+    from django.db.models import Prefetch
+    venta = get_object_or_404(
+        Venta.objects.select_related('usuario').prefetch_related(
+            Prefetch('detalles__producto')
+        ),
+        id=venta_id
+    )
     
-    # Restricción adicional: si no es ADMIN, solo puede ver sus propias ventas
     if request.user.rol != "ADMIN" and venta.usuario != request.user:
-          messages.error(request, "No tienes permiso para ver esta venta.")
-          return redirect('venta_lista')
+        messages.error(request, "No tienes permiso para ver esta venta.")
+        return redirect('venta_lista')
           
     return render(request, 'inventario/venta_detalle.html', {'venta': venta})
 
@@ -172,82 +306,85 @@ def venta_detalle(request, venta_id):
 # ==================== FACTURA PDF ====================
 
 @login_required(login_url='login')
-@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login') # Añadir restricción de rol
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 def venta_factura_pdf(request, venta_id):
-    """
-    Generar factura de venta en PDF.
-    Solo accesible por ADMIN o el CAJERO que realizó la venta.
-    """
     venta = get_object_or_404(Venta, id=venta_id)
 
-    # Restricción: Solo permite si es ADMIN o si es su propia venta
     if request.user.rol != "ADMIN" and venta.usuario != request.user:
-          messages.error(request, "No tienes permiso para generar la factura de esta venta.")
-          # Cambiado a HttpResponseForbidden para una respuesta HTTP más apropiada
-          return HttpResponseForbidden("No tienes permiso para generar la factura de esta venta.")
+        return HttpResponseForbidden("No tienes permiso para ver esta factura.")
 
+    pdf_data = generar_pdf_factura(venta)
 
-    response = HttpResponse(content_type='application/pdf')
+    response = HttpResponse(pdf_data, content_type="application/pdf")
     response['Content-Disposition'] = f'inline; filename="factura_{venta.id}.pdf"'
-
-    p = canvas.Canvas(response, pagesize=letter)
-
-    y = 750
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, y, f"Factura Venta #{venta.id}")
-    y -= 40
-
-    p.setFont("Helvetica", 12)
-    p.drawString(50, y, f"Fecha: {venta.fecha.strftime('%Y-%m-%d %H:%M:%S')}")
-    y -= 20
-    p.drawString(50, y, f"Cajero: {venta.usuario.username}")
-    y -= 20
-    p.drawString(50, y, f"Método de pago: {venta.metodo_pago}")
-    y -= 30
-
-    # Detalle de productos
-    p.drawString(50, y, "Detalle:")
-    y -= 20
-
-    for item in venta.detalles.all():
-        p.drawString(60, y, f"{item.producto.nombre} x {item.cantidad} @ ${item.precio_unitario} = ${item.subtotal}")
-        y -= 20
-
-    y -= 20
-
-    # Totales (SUBTOTAL - DESCUENTO + IVA)
-    p.drawString(50, y, f"Subtotal: ${venta.total}")
-    y -= 20
-
-    p.drawString(50, y, f"Descuento: -${venta.descuento_general}")
-    y -= 20
-
-    p.drawString(50, y, f"IVA ({venta.iva_porcentaje}%): ${venta.iva_total}")
-    y -= 30
-
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, y, f"TOTAL A PAGAR: ${venta.total_final}")
-    y -= 25
-
-    # Monto recibido y cambio
-    if venta.metodo_pago == "EFECTIVO":
-        p.setFont("Helvetica", 12)
-        p.drawString(50, y, f"Monto recibido: ${venta.monto_recibido}")
-        y -= 20
-        p.drawString(50, y, f"Cambio: ${venta.cambio}")
-    
-    p.showPage()
-    p.save()
-
     return response
 
-# ==================== MIS VENTAS (Agregado) ====================
+
+# ==================== MIS VENTAS ====================
 
 @login_required
 def mis_ventas(request):
-    """
-    Vista simple para mostrar solo las ventas realizadas por el usuario actual.
-    (Nota: Esta lógica está cubierta por venta_lista para el rol CAJERO).
-    """
     ventas = Venta.objects.filter(usuario=request.user).order_by('-fecha')
     return render(request, 'ventas/mis_ventas.html', {"ventas": ventas})
+
+
+
+#mimimiim
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
+@require_GET
+def productos_search_json(request):
+    """
+    GET /ventas/api/productos-search/?q=...
+    Devuelve JSON con lista de productos activos que coinciden por nombre o código.
+    Limita a 30 resultados.
+    """
+    q = request.GET.get('q', '').strip()
+    productos = Producto.objects.filter(activo=True)
+
+    if q:
+        # si q es numérico buscar por código también
+        if q.isdigit():
+            productos = productos.filter(codigo__icontains=q) | productos.filter(nombre__icontains=q)
+        else:
+            productos = productos.filter(nombre__icontains=q)
+
+    productos = productos.order_by('nombre')[:30]
+
+    data = [
+        {
+            'id': p.id,
+            'nombre': p.nombre,
+            'codigo': p.codigo,
+            'precio_venta': float(p.precio_venta),
+            'stock': p.stock,
+        }
+        for p in productos
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@login_required(login_url='login')
+@user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
+@require_GET
+def producto_json(request, producto_id):
+    """
+    GET /ventas/api/producto/<id>/
+    Devuelve JSON con detalle de un producto (para cuando el frontend
+    quiera solicitar datos completos de un id concreto).
+    """
+    try:
+        p = Producto.objects.get(id=producto_id, activo=True)
+    except Producto.DoesNotExist:
+        return JsonResponse({'error': 'Producto no encontrado'}, status=404)
+
+    data = {
+        'id': p.id,
+        'nombre': p.nombre,
+        'codigo': p.codigo,
+        'precio_venta': float(p.precio_venta),
+        'precio_compra': float(p.precio_compra),
+        'stock': p.stock,
+        'descripcion': getattr(p, 'descripcion', '')  # si existe
+    }
+    return JsonResponse(data)

@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.views import View
 from django.utils.decorators import method_decorator
+from django.utils.http import urlsafe_base64_decode   
 from rest_framework.response import Response
 from rest_framework import status, generics, permissions
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -11,6 +12,8 @@ from rest_framework.views import APIView
 from django.contrib.auth.decorators import user_passes_test, login_required # Se añade login_required
 from django.http import HttpResponseForbidden # Se añade HttpResponseForbidden
 from .serializers import RegisterSerializer, LoginSerializer
+from django.contrib.auth.tokens import default_token_generator
+from accounts.models import User
 # Importación del formulario (asumiendo que está en el mismo paquete de la app)
 from .forms import UsuarioForm 
 
@@ -64,15 +67,26 @@ class RegisterTemplateView(View):
                 'username': username
             })
         
-        # Verificar si el usuario ya existe
-        if User.objects.filter(email__iexact=email).exists():
-            messages.error(request, 'El correo ya está registrado')
+        # Verificar si el usuario ya existe (ACTIVO)
+        usuario_activo = User.objects.filter(email__iexact=email, is_active=True).exists()
+        if usuario_activo:
+            messages.error(request, 'El correo ya está registrado y está activo')
             return render(request, 'accounts/register.html', {
                 'username': username
             })
         
+        # Si existe (activo o inactivo), mostrar error y re-renderizar el formulario
+        # (No permitimos re-registro automático sobre un email ya registrado)
+        usuario_existente = User.objects.filter(email__iexact=email).exists()
+        if usuario_existente:
+            messages.error(request, 'El correo ya está registrado (si olvidaste la contraseña usa recuperar).')
+            return render(request, 'accounts/register.html', {
+                'email': email,
+                'username': username
+            })
+        
         if User.objects.filter(username__iexact=username).exists():
-            messages.error(request, 'El usuario ya está registrado')
+            messages.error(request, 'El nombre de usuario ya está registrado')
             return render(request, 'accounts/register.html', {
                 'email': email
             })
@@ -83,10 +97,28 @@ class RegisterTemplateView(View):
             user = User.objects.create_user(
                 email=email,
                 username=username,
-                password=password
+                password=password,
+                is_active=False,
+                rol="CAJERO"  # Asignar rol predeterminado de CAJERO
             )
-            # NO autologueamos, dejamos que el usuario haga login manualmente
-            messages.success(request, f'¡Cuenta creada exitosamente! Por favor inicia sesión con tus credenciales.')
+            
+            # Enviar correo de verificación
+            from .utils import send_verification_email
+            email_enviado = send_verification_email(request, user)
+            
+            if email_enviado:
+                messages.success(
+                    request, 
+                    f'¡Cuenta creada exitosamente! Se envió un email de verificación a {email}. '
+                    f'Por favor verifica tu email para activar tu cuenta.'
+                )
+            else:
+                messages.warning(
+                    request,
+                    f'Cuenta creada pero hubo un problema al enviar el email de verificación. '
+                    f'Contacta a soporte.'
+                )
+            
             return redirect('login')
         except Exception as e:
             messages.error(request, f'Error al registrar: {str(e)}')
@@ -205,54 +237,8 @@ def usuario_eliminar(request, usuario_id):
     return redirect("usuarios_lista")
 
 
-# ==================== VISTAS API (REST) ====================
-
-class RegisterView(generics.CreateAPIView):
-    """API para registrar un nuevo usuario."""
-    queryset = User.objects.all()
-    serializer_class = RegisterSerializer
-    # Permiso para que cualquiera pueda registrarse
-    permission_classes = [permissions.AllowAny] 
 
 
-class LoginView(APIView):
-    """API para obtener tokens de autenticación (Login)."""
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data.get('user')
-        
-        if user:
-            refresh = RefreshToken.for_user(user)
-            return Response({
-                "user": {
-                    "id": user.id,
-                    "username": user.username,
-                    "email": user.email
-                },
-                "refresh": str(refresh),
-                "access": str(refresh.access_token)
-            })
-        else:
-            # Este caso no debería ocurrir si el serializer valida correctamente
-            return Response({"error": "Credenciales inválidas"}, status=status.HTTP_401_UNAUTHORIZED)
-
-
-class UserView(APIView):
-    """API para obtener los datos del usuario autenticado."""
-    # Requiere que el usuario esté autenticado con un token JWT válido
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request):
-        user = request.user
-        return Response({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            # Se añade el rol para información del API
-            "rol": getattr(user, 'rol', 'N/A') 
-        })
-        
 # ==================== NUEVA FUNCIÓN DE REDIRECCIÓN ====================
 
 @login_required(login_url='login')
@@ -267,3 +253,32 @@ def home_redirect(request):
     else:
         # Responde con un error 403 Forbidden si el rol no coincide
         return HttpResponseForbidden("Tu rol no está configurado correctamente.")
+    
+# ==================== ENVIO GMAIL VERIFICACION LOGIN====================
+def activate_account(request, uidb64, token):
+    """Activa la cuenta del usuario con el token de verificación"""
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = User.objects.get(pk=uid)
+    except Exception as e:
+        print(f"❌ Error decodificando token: {str(e)}")
+        user = None
+
+    if user and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        messages.success(
+            request, 
+            f"✅ ¡Tu cuenta ha sido verificada exitosamente! "
+            f"Ya puedes iniciar sesión con tus credenciales."
+        )
+        print(f"✅ Cuenta activada para usuario: {user.email}")
+        return redirect('login')
+    else:
+        if user:
+            print(f"❌ Token inválido para usuario: {user.email}")
+        messages.error(
+            request, 
+            "❌ El enlace no es válido o ha expirado. Por favor, regístrate de nuevo."
+        )
+        return redirect('register')

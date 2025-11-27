@@ -1,0 +1,190 @@
+{% extends "inventario/base.html" %}
+
+{% block page_title %}Devoluciones{% endblock %}
+
+{% block content %}
+
+<div class="grid grid-cols-2 gap-6">
+    <div class="bg-white p-4 rounded shadow">
+        <h3 class="font-bold mb-4">Registrar Devolución</h3>
+        <form method="post" id="devolucion-form">
+            {% csrf_token %}
+            <div class="mb-2">
+                <label class="block text-sm">Venta (opcional)</label>
+                <select id="venta-select" name="venta" class="w-full border p-2 rounded">
+                    <option value="">-- Seleccionar venta --</option>
+                    {% for v in ventas %}
+                        <option value="{{ v.id }}">Venta #{{ v.id }} - {{ v.fecha }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div id="venta-detalles-section" class="mb-2 hidden">
+                <label class="block text-sm font-semibold">Productos en la venta</label>
+                <div id="detalles-container" class="mt-2"></div>
+            </div>
+
+            <div id="manual-product-section" class="mb-2">
+                <label class="block text-sm">Producto (si no usas venta)</label>
+                <select name="producto" class="w-full border p-2 rounded">
+                    <option value="">-- Seleccionar producto --</option>
+                    {% for p in productos %}
+                        <option value="{{ p.id }}">{{ p.nombre }} (Stock: {{ p.stock }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-2">
+                <label class="block text-sm">Cantidad (si es devolución manual)</label>
+                <input type="number" name="cantidad" min="1" class="w-full border p-2 rounded">
+            </div>
+
+            <div class="mb-2">
+                <label class="block text-sm">Motivo (opcional)</label>
+                <input type="text" name="motivo" class="w-full border p-2 rounded">
+            </div>
+
+            <div class="mt-4">
+                <button class="bg-blue-600 text-white px-4 py-2 rounded">Registrar devolucion</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white p-4 rounded shadow">
+        <h3 class="font-bold mb-4">Últimas devoluciones</h3>
+        <table class="min-w-full text-left">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Producto</th>
+                    <th>Cantidad</th>
+                    <th>Usuario</th>
+                    <th>Fecha</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in devoluciones %}
+                <tr class="border-t">
+                    <td class="px-2 py-1">{{ d.id }}</td>
+                    <td class="px-2 py-1">{{ d.producto.nombre }}</td>
+                    <td class="px-2 py-1">{{ d.cantidad }}</td>
+                    <td class="px-2 py-1">{{ d.usuario.username }}</td>
+                    <td class="px-2 py-1">{{ d.fecha }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-2 py-1">No hay devoluciones registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// CSRF helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+    const ventaSelect = document.getElementById('venta-select');
+    const detallesContainer = document.getElementById('detalles-container');
+    const detallesSection = document.getElementById('venta-detalles-section');
+    const manualSection = document.getElementById('manual-product-section');
+    const manualProducto = document.querySelector('#manual-product-section select[name="producto"]');
+    const manualCantidad = document.querySelector('input[name="cantidad"]');
+
+    ventaSelect.addEventListener('change', async function() {
+    const ventaId = this.value;
+    detallesContainer.innerHTML = '';
+    if (!ventaId) {
+            detallesSection.classList.add('hidden');
+            manualSection.classList.remove('hidden');
+            // habilitar inputs manuales
+            if (manualProducto) { manualProducto.disabled = false; manualProducto.name = 'producto'; }
+            if (manualCantidad) { manualCantidad.disabled = false; manualCantidad.name = 'cantidad'; }
+        return;
+    }
+
+    // Ocultar la sección manual cuando se utiliza venta
+        manualSection.classList.add('hidden');
+        // deshabilitar inputs manuales para que no se envíen
+        if (manualProducto) { manualProducto.disabled = true; manualProducto.name = ''; }
+        if (manualCantidad) { manualCantidad.disabled = true; manualCantidad.name = ''; }
+
+    // Mostrar loader mínimo
+    detallesSection.classList.remove('hidden');
+    detallesContainer.innerHTML = '<div class="p-2">Cargando detalles...</div>';
+
+    try {
+        const resp = await fetch(`/devoluciones/api/venta/${ventaId}/detalles/`, {
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        });
+        if (!resp.ok) throw new Error('Error fetching detalles');
+        const data = await resp.json();
+
+        detallesContainer.innerHTML = '';
+        if (data.detalles.length === 0) {
+            detallesContainer.innerHTML = '<div class="p-2">No hay productos en esta venta.</div>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.className = 'min-w-full text-left';
+        const thead = document.createElement('thead');
+        thead.innerHTML = '<tr><th>Producto</th><th>Vendidos</th><th>Devueltos</th><th>Devolver</th></tr>';
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+
+        data.detalles.forEach(d => {
+            const tr = document.createElement('tr');
+            tr.className = 'border-t';
+            const prodTd = document.createElement('td'); prodTd.className='px-2 py-1'; prodTd.textContent = d.producto_nombre;
+            const vendTd = document.createElement('td'); vendTd.className='px-2 py-1'; vendTd.textContent = d.cantidad_vendida;
+            const devTd = document.createElement('td'); devTd.className='px-2 py-1'; devTd.textContent = d.cantidad_devuelta;
+            const inputTd = document.createElement('td'); inputTd.className='px-2 py-1';
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.name = `detalle_${d.detalle_id}`;
+            input.min = 0;
+            input.max = d.max_returnable;
+            input.value = 0;
+            input.className = 'border p-1 rounded w-20';
+
+            if (d.max_returnable <= 0) {
+                input.disabled = true;
+            }
+
+            inputTd.appendChild(input);
+
+            tr.appendChild(prodTd);
+            tr.appendChild(vendTd);
+            tr.appendChild(devTd);
+            tr.appendChild(inputTd);
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        detallesContainer.appendChild(table);
+
+    } catch (err) {
+        detallesContainer.innerHTML = '<div class="p-2 text-red-600">Error cargando detalles.</div>';
+        console.error(err);
+    }
+});
+</script>
+{% endblock %}

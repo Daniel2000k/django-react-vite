@@ -60,14 +60,8 @@ class OrdenCompra(models.Model):
             self.estado = 'RECIBIDA'
             self.fecha_recepcion = timezone.now()
             self.save()
-
-            AlertaInventario.objects.create(
-                tipo="COMPRA",
-                titulo=f"Orden de compra OC-{self.id} recibida",
-                mensaje=f"Se agregaron {self.cantidad} unidades de {self.producto.nombre}.",
-                producto=self.producto,
-                orden_compra=self
-            )
+            # Nota: creación de alertas tipo 'COMPRA' desactivada por petición. Si se necesita
+            # reactivar, restaurar la llamada a AlertaInventario.objects.create(...)
 
 
 # ===========================

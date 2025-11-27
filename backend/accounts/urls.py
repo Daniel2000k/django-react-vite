@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     # Vistas API
-    RegisterView, LoginView, UserView,
+    activate_account,
     
     # Vistas de Autenticación con Templates
     RegisterTemplateView, LoginTemplateView, LogoutTemplateView, HomeTemplateView,
@@ -14,16 +14,12 @@ from .views import (
 )
 
 urlpatterns = [
-    # ==================== RUTAS API (REST) ====================
-    # Permiten el registro, login y obtención de usuario mediante tokens JWT.
-    path('api/register/', RegisterView.as_view(), name='api_register'),
-    path('api/login/', LoginView.as_view(), name='api_login'),
-    path('api/user/', UserView.as_view(), name='api_user'),
+    
     
     # ==================== RUTAS TEMPLATES (Autenticación) ====================
     # Vistas basadas en clases para manejar el flujo de autenticación con renderizado HTML.
     
-    # 💡 RUTA PRINCIPAL (CORRECCIÓN): La ruta raíz (vacía) ahora usa home_redirect
+    # 💡 RUTA PRINCIPAL (CORRECCIÓN): 
     path('', home_redirect, name='root'), 
     
     # Login, logout, register (Existentes)
@@ -40,4 +36,6 @@ urlpatterns = [
     path("usuarios/crear/", usuario_crear, name="usuario_crear"),
     path("usuarios/editar/<int:usuario_id>/", usuario_editar, name="usuario_editar"),
     path("usuarios/eliminar/<int:usuario_id>/", usuario_eliminar, name="usuario_eliminar"),
+    path("activate/<uidb64>/<token>/", activate_account, name="activate"),
+
 ]

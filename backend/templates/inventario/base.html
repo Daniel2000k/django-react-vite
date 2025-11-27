@@ -5,25 +5,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MiTienda{% endblock %}</title>
+    <title>{% block title %}Stock Master{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script> {# Agregado Tailwind CDN para soportar el nuevo estilo #}
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     
     <style>
         /* Definiciones de color para simular el estilo anterior */
         .bg-sidebar {
-            background-color: #0e2a47; /* Color oscuro para la sidebar, si se desea el estilo anterior */
+            background-color: #1F3B92; /* Color azul oscuro para la sidebar */
         }
         .text-sidebar-link {
-            color: #ffffff; /* Texto blanco en el menú, para el nuevo estilo */
+            color: #ffffff; /* Texto blanco en el menú */
+        }
+        .hover-sidebar {
+            background-color: #2a5adc; /* Color hover más claro para sidebar */
         }
     </style>
 </head>
 
 <body class="bg-gray-100">
 
-    <header class="bg-blue-700 text-white p-4 flex justify-between items-center shadow">
-        <h1 class="text-2xl font-bold">MiTienda</h1>
+    <header class="bg-[#1E2A5A] text-white p-4 flex justify-between items-center shadow">
+        <h1 class="text-2xl font-bold">Stock Master</h1>
 
         <div class="flex items-center space-x-4">
             <span class="font-semibold">
@@ -38,14 +41,15 @@
 
     <div class="flex">
 
-        <aside class="w-64 bg-[#0e2a47] border-r h-screen p-4 shadow-lg">
+        <aside class="w-64 bg-[#1F3B92] border-r h-screen p-4 shadow-lg overflow-y-auto sticky top-0">
+
 
             <nav class="flex flex-col space-y-2">
                 {% with items=menu_items|default:request.menu_items %}
                     {% if items %}
                         {% for name, url in items %}
                             {% with name|lower as item %}
-                                <a href="{{ url }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-[#1b3e63] transition text-white">
+                                <a href="{{ url }}" class="flex items-center space-x-3 p-3 rounded-lg hover:bg-[#2a5adc] transition text-white">
                                     {% if "home" in item %}
                                         <span class="text-xl">🏠</span>
                                     {% elif "inventario" in item %}
@@ -60,6 +64,8 @@
                                         <span class="text-xl">📨</span>
                                     {% elif "reportes" in item %}
                                         <span class="text-xl">📊</span>
+                                    {% elif "devoluciones" in item %}
+                                        <span class="text-xl">↩️</span>
                                     {% else %}
                                         <span class="text-xl">➡️</span>
                                     {% endif %}

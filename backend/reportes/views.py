@@ -78,11 +78,13 @@ def dashboard(request):
 
     # Top productos últimos 30 días
     inicio_30 = hoy - timedelta(days=30)
+    # Usar nombre histórico si el producto fue eliminado (snapshot en DetalleVenta)
     top_qs = (
         DetalleVenta.objects
         .filter(venta__fecha__date__gte=inicio_30)
-        .values(prod_name=F('producto__nombre'))
-        .annotate(cantidad_vendida=Coalesce(Sum('cantidad'), 0, output_field=DecimalField()))
+        .annotate(prod_name=Coalesce(F('producto__nombre'), F('producto_nombre')))
+        .values('prod_name')
+        .annotate(cantidad_vendida=Coalesce(Sum('cantidad'), Decimal(0), output_field=DecimalField()))
         .order_by('-cantidad_vendida')[:10]
     )
 
@@ -90,16 +92,16 @@ def dashboard(request):
     cantidades_mas_vendidas = [int(t['cantidad_vendida']) for t in top_qs]
 
     # Insights simples
-    producto_top = Producto.objects.order_by('-stock').first()
+    producto_top = Producto.objects.filter(activo=True).order_by('-stock').first()
     producto_mas_vendido = top_qs[0]['prod_name'] if top_qs else 'N/A'
-    bajo_stock_count = Producto.objects.filter(stock__lte=5).count()
+    bajo_stock_count = Producto.objects.filter(stock__lte=5, activo=True).count()
     ventas_hoy = Venta.objects.filter(fecha__date=hoy).aggregate(
         total=Coalesce(Sum('total_final', output_field=DecimalField()), Decimal(0))
     )['total'] or Decimal(0)
 
     # KPIs
-    total_productos = Producto.objects.count()
-    stock_total = Producto.objects.aggregate(
+    total_productos = Producto.objects.filter(activo=True).count()
+    stock_total = Producto.objects.filter(activo=True).aggregate(
         total_stock=Coalesce(Sum('stock'), 0)
     )['total_stock'] or 0
     movimientos = Inventario.objects.all().order_by('-fecha')[:50]
@@ -139,9 +141,11 @@ def ventas_por_periodo(request):
         fecha_inicio = date.today() - timedelta(days=30)
         fecha_fin = date.today()
 
+    # ✅ OPTIMIZACIÓN: select_related para usuario evita N+1 queries
     # Obtener todas las ventas en el período
     ventas_raw = (
         Venta.objects
+        .select_related('usuario')
         .filter(fecha__date__gte=fecha_inicio, fecha__date__lte=fecha_fin)
         .order_by('fecha')
     )
@@ -196,12 +200,15 @@ def top_productos(request):
 
     fecha_inicio = date.today() - timedelta(days=dias)
 
+    # Usar nombre histórico si producto fue eliminado
     top = (
         DetalleVenta.objects
         .filter(venta__fecha__date__gte=fecha_inicio)
-        .values('producto__id', 'producto__nombre')
+        .annotate(prod_id=Coalesce(F('producto__id'), F('producto_id')),
+                  prod_name=Coalesce(F('producto__nombre'), F('producto_nombre')))
+        .values('prod_id', 'prod_name')
         .annotate(
-            cantidad_vendida=Coalesce(Sum('cantidad'), 0, output_field=DecimalField()),
+            cantidad_vendida=Coalesce(Sum('cantidad'), Decimal(0), output_field=DecimalField()),
             total_generado=Coalesce(Sum('subtotal', output_field=DecimalField()), Decimal(0)),
             num_transacciones=Count('venta', distinct=True)
         )
@@ -229,7 +236,7 @@ def productos_bajo_stock(request):
 
     productos = (
         Producto.objects
-        .filter(stock__lte=threshold)
+        .filter(stock__lte=threshold, activo=True)
         .values('id', 'codigo', 'nombre', 'stock', 'precio_venta')
         .order_by('stock')
     )
@@ -316,7 +323,7 @@ def export_ventas_csv(request):
                 venta.id,
                 venta.fecha.strftime('%Y-%m-%d %H:%M:%S'),
                 venta.usuario.username if venta.usuario else 'N/A',
-                detalle.producto.nombre,
+                detalle.producto.nombre if detalle.producto else detalle.producto_nombre,
                 detalle.cantidad,
                 detalle.precio_unitario,
                 detalle.subtotal,
