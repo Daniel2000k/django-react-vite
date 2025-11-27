@@ -13,61 +13,99 @@ from django.contrib import messages
 from django.core.mail import EmailMessage
 from django.conf import settings
 from io import BytesIO
-
+#llllllllllllllllllllllllllllllllllllllllllllllllll
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.platypus import Table, TableStyle
+import os
 # Importación de la función de chequeo de Admin/Cajero (aunque usaremos lambda)
 from accounts.views import es_admin, es_cajero  # Importar las funciones (aunque se usa lambda)
 
 
 # ==================== FUNCIÓN AUXILIAR: GENERAR Y ENVIAR FACTURA ====================
 
+# ==================== FUNCIÓN AUXILIAR: GENERAR FACTURA PDF ====================
+
 def generar_pdf_factura(venta):
-    """Genera el PDF de la factura en memoria y lo retorna"""
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
 
-    y = 750
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, y, f"Factura Venta #{venta.id}")
-    y -= 40
+    # --- Logo corporativo ---
+    logo_path = os.path.join(settings.BASE_DIR, "static", "img", "logo.png")
+    if os.path.exists(logo_path):
+        p.drawImage(logo_path, 50, 730, width=60, height=60, mask="auto")
 
-    p.setFont("Helvetica", 12)
+    # --- Título centrado ---
+    p.setFont("Helvetica-Bold", 20)
+    p.drawCentredString(width / 2, 760, f"🧾 Stock Master - Factura de Venta #{venta.id}")
+
+    # --- Datos de la venta (arriba, alineados a la izquierda) ---
+    p.setFont("Helvetica", 11)
+    y = 720
     p.drawString(50, y, f"Fecha: {venta.fecha.strftime('%Y-%m-%d %H:%M:%S')}")
-    y -= 20
+    y -= 15
     p.drawString(50, y, f"Cajero: {venta.usuario.email}")
-    y -= 20
-    p.drawString(50, y, f"Método de pago: {venta.metodo_pago}")
-    y -= 20
+    y -= 15
     p.drawString(50, y, f"Cliente: {venta.email_cliente or 'No registrado'}")
-    y -= 30
+    y -= 15
+    p.drawString(50, y, f"Método de pago: {venta.metodo_pago}")
 
-    p.drawString(50, y, "Detalle:")
-    y -= 20
-
+    # --- Tabla de productos ---
+    data = [["Producto", "Cantidad", "Precio Unitario", "Subtotal"]]
     for item in venta.detalles.all():
-        nombre_producto = item.producto.nombre if item.producto else item.producto_nombre
-        p.drawString(60, y, f"{nombre_producto} x {item.cantidad} = ${item.subtotal}")
-        y -= 20
+        nombre = item.producto.nombre if item.producto else item.producto_nombre
+        data.append([
+            nombre,
+            str(item.cantidad),
+            f"${item.precio_unitario:.2f}",
+            f"${item.subtotal:.2f}"
+        ])
 
+    table = Table(data, colWidths=[200, 70, 100, 100])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563eb")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+
+    table.wrapOn(p, width, height)
+    table.drawOn(p, 50, 580)
+
+    # --- Totales (alineados a la izquierda, debajo de la tabla) ---
+    y = 540
+    p.setFont("Helvetica", 12)
+    p.drawString(50, y, f"Subtotal: ${venta.total:.2f}")
     y -= 20
-    p.drawString(50, y, f"Subtotal: ${venta.total}")
+    p.drawString(50, y, f"Descuento: -${venta.descuento_general:.2f}")
     y -= 20
-    p.drawString(50, y, f"Descuento: -${venta.descuento_general}")
-    y -= 20
-    p.drawString(50, y, f"IVA ({venta.iva_porcentaje}%): ${venta.iva_total}")
-    y -= 30
+    p.drawString(50, y, f"IVA ({venta.iva_porcentaje}%): ${venta.iva_total:.2f}")
+    y -= 25
 
     p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, y, f"TOTAL FINAL: ${venta.total_final}")
+    p.drawString(50, y, f"TOTAL FINAL: ${venta.total_final:.2f}")
     y -= 25
+
+    # --- Pago y cambio (solo si es efectivo) ---
+    if venta.metodo_pago == "EFECTIVO":
+        p.setFont("Helvetica", 12)
+        p.drawString(50, y, f"Monto recibido: ${venta.monto_recibido:.2f}")
+        y -= 20
+        p.drawString(50, y, f"Cambio entregado: ${venta.cambio:.2f}")
+
+    # --- Footer ---
+    p.setFont("Helvetica-Oblique", 10)
+    p.drawCentredString(width / 2, 50, "Gracias por tu compra. Stock Master © 2025")
 
     p.showPage()
     p.save()
 
     pdf_data = buffer.getvalue()
     buffer.close()
-    
     return pdf_data
-
 
 def enviar_factura_email(venta):
     """Envía la factura por email al cliente"""

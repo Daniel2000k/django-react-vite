@@ -1,15 +1,43 @@
-from django.core.mail import EmailMultiAlternatives
+import random
+import hashlib
+from urllib.parse import urlencode
+
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib.sites.shortcuts import get_current_site
 from django.utils.http import urlsafe_base64_encode
 from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse
-from django.conf import settings
-import hashlib
-from urllib.parse import urlencode
+
+
+# ==========================
+# 🔐 OTP (One-Time Password)
+# ==========================
+
+def generate_otp():
+    """Genera un código OTP de 6 dígitos"""
+    return str(random.randint(100000, 999999))
+
+
+def send_otp_email(user, code):
+    """Envía el OTP al correo del usuario"""
+    subject = "🔐 Tu código de verificación"
+    message = f"Hola {user.username}, tu código OTP es: {code}. Válido por 5 minutos."
+    send_mail(
+        subject,
+        message,
+        "stockmaster255@gmail.com",  # remitente fijo Gmail
+        [user.email],
+        fail_silently=False,
+    )
+
+
+# ==========================
+# 👤 Gravatar
+# ==========================
 
 def get_gravatar(email, size=200):
-    """Return Gravatar URL from an email."""
+    """Devuelve la URL de Gravatar a partir de un email."""
     if not email:
         return None  # evita error si el email es None
 
@@ -26,8 +54,12 @@ def get_gravatar(email, size=200):
     return gravatar_url
 
 
+# ==========================
+# 📧 Email de verificación
+# ==========================
+
 def send_verification_email(request, user):
-    """Envía email de verificación usando la configuración de settings.py"""
+    """Envía email de verificación usando Gmail como remitente"""
     try:
         current_site = get_current_site(request)
         uid = urlsafe_base64_encode(force_bytes(user.pk))
@@ -121,19 +153,26 @@ def send_verification_email(request, user):
         email = EmailMultiAlternatives(
             subject=subject,
             body=f"Verifica tu cuenta en Stock Master: {activation_url}",
-            from_email=settings.DEFAULT_FROM_EMAIL,  # ✅ Usa configuración de settings.py
+            from_email="stockmaster255@gmail.com",  # 🔒 remitente fijo Gmail
             to=[user.email],
         )
         email.attach_alternative(html_message, "text/html")
+
+        # Cabeceras extra para mejorar entrega en Outlook
+        email.extra_headers = {
+            "Reply-To": "stockmaster255@gmail.com",
+            "X-Mailer": "Django",
+        }
+
         resultado = email.send()
-        
+
         if resultado:
             print(f"✅ Email de verificación enviado a {user.email}")
             return True
         else:
             print(f"❌ Email de verificación no se envió a {user.email}")
             return False
-            
+
     except Exception as e:
         print(f"❌ Error enviando email de verificación: {str(e)}")
         return False

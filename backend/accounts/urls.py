@@ -1,4 +1,6 @@
 from django.urls import path
+from .views import verify_otp
+
 from .views import (
     # Vistas API
     activate_account,
@@ -38,4 +40,6 @@ urlpatterns = [
     path("usuarios/eliminar/<int:usuario_id>/", usuario_eliminar, name="usuario_eliminar"),
     path("activate/<uidb64>/<token>/", activate_account, name="activate"),
 
+    # ==================== RUTA OTP ====================
+    path('verify-otp/', verify_otp, name='verify_otp'),
 ]

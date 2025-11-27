@@ -1,0 +1,15 @@
+{% extends 'inventario/base.html' %}
+{% block content %}
+<h2>Verificación OTP</h2>
+<form method="post">
+  {% csrf_token %}
+  <label>Ingresa el código enviado a tu correo:</label>
+  <input type="text" name="otp" maxlength="6" required>
+  <button type="submit">Verificar</button>
+</form>
+{% if messages %}
+  {% for message in messages %}
+    <p style="color:red;">{{ message }}</p>
+  {% endfor %}
+{% endif %}
+{% endblock %}
