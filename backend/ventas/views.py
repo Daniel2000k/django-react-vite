@@ -1,9 +1,10 @@
+import mercadopago # ⬅️ Necesario para el SDK de Mercado Pago
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required, user_passes_test
 from .models import Venta, DetalleVenta
 from inventario.models import Producto, Inventario
-from django.http import JsonResponse  # opcional, si se planea usar viewsets aquí
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_GET
 from decimal import Decimal
@@ -11,63 +12,101 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from django.contrib import messages
 from django.core.mail import EmailMessage
-from django.conf import settings
+from django.conf import settings # Necesario para MERCADOPAGO_ACCESS_TOKEN
 from io import BytesIO
-
+from django.urls import reverse # ⬅️ Necesario para generar las Back URLs
+from django.core.mail import send_mail
+#llllllllllllllllllllllllllllllllllllllllllllllllll
+from reportlab.lib import colors
+from reportlab.lib.units import mm
+from reportlab.platypus import Table, TableStyle
+import os
 # Importación de la función de chequeo de Admin/Cajero (aunque usaremos lambda)
-from accounts.views import es_admin, es_cajero  # Importar las funciones (aunque se usa lambda)
+from accounts.views import es_admin, es_cajero 
 
 
-# ==================== FUNCIÓN AUXILIAR: GENERAR Y ENVIAR FACTURA ====================
+# ==================== FUNCIÓN AUXILIAR: GENERAR FACTURA PDF ====================
 
 def generar_pdf_factura(venta):
-    """Genera el PDF de la factura en memoria y lo retorna"""
     buffer = BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
 
-    y = 750
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(50, y, f"Factura Venta #{venta.id}")
-    y -= 40
+    # --- Logo corporativo ---
+    logo_path = os.path.join(settings.BASE_DIR, "static", "img", "logo.png")
+    if os.path.exists(logo_path):
+        p.drawImage(logo_path, 50, 730, width=60, height=60, mask="auto")
 
-    p.setFont("Helvetica", 12)
+    # --- Título centrado ---
+    p.setFont("Helvetica-Bold", 20)
+    p.drawCentredString(width / 2, 760, f"🧾 Stock Master - Factura de Venta #{venta.id}")
+
+    # --- Datos de la venta (arriba, alineados a la izquierda) ---
+    p.setFont("Helvetica", 11)
+    y = 720
     p.drawString(50, y, f"Fecha: {venta.fecha.strftime('%Y-%m-%d %H:%M:%S')}")
-    y -= 20
+    y -= 15
     p.drawString(50, y, f"Cajero: {venta.usuario.email}")
-    y -= 20
-    p.drawString(50, y, f"Método de pago: {venta.metodo_pago}")
-    y -= 20
+    y -= 15
     p.drawString(50, y, f"Cliente: {venta.email_cliente or 'No registrado'}")
-    y -= 30
+    y -= 15
+    p.drawString(50, y, f"Método de pago: {venta.metodo_pago}")
 
-    p.drawString(50, y, "Detalle:")
-    y -= 20
-
+    # --- Tabla de productos ---
+    data = [["Producto", "Cantidad", "Precio Unitario", "Subtotal"]]
     for item in venta.detalles.all():
-        nombre_producto = item.producto.nombre if item.producto else item.producto_nombre
-        p.drawString(60, y, f"{nombre_producto} x {item.cantidad} = ${item.subtotal}")
-        y -= 20
+        nombre = item.producto.nombre if item.producto else item.producto_nombre
+        data.append([
+            nombre,
+            str(item.cantidad),
+            f"${item.precio_unitario:.2f}",
+            f"${item.subtotal:.2f}"
+        ])
 
+    table = Table(data, colWidths=[200, 70, 100, 100])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2563eb")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("ALIGN", (1, 1), (-1, -1), "CENTER"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ]))
+
+    table.wrapOn(p, width, height)
+    table.drawOn(p, 50, 580)
+
+    # --- Totales (alineados a la izquierda, debajo de la tabla) ---
+    y = 540
+    p.setFont("Helvetica", 12)
+    p.drawString(50, y, f"Subtotal: ${venta.total:.2f}")
     y -= 20
-    p.drawString(50, y, f"Subtotal: ${venta.total}")
+    p.drawString(50, y, f"Descuento: -${venta.descuento_general:.2f}")
     y -= 20
-    p.drawString(50, y, f"Descuento: -${venta.descuento_general}")
-    y -= 20
-    p.drawString(50, y, f"IVA ({venta.iva_porcentaje}%): ${venta.iva_total}")
-    y -= 30
+    p.drawString(50, y, f"IVA ({venta.iva_porcentaje}%): ${venta.iva_total:.2f}")
+    y -= 25
 
     p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, y, f"TOTAL FINAL: ${venta.total_final}")
+    p.drawString(50, y, f"TOTAL FINAL: ${venta.total_final:.2f}")
     y -= 25
+
+    # --- Pago y cambio (solo si es efectivo) ---
+    if venta.metodo_pago == "EFECTIVO":
+        p.setFont("Helvetica", 12)
+        p.drawString(50, y, f"Monto recibido: ${venta.monto_recibido:.2f}")
+        y -= 20
+        p.drawString(50, y, f"Cambio entregado: ${venta.cambio:.2f}")
+
+    # --- Footer ---
+    p.setFont("Helvetica-Oblique", 10)
+    p.drawCentredString(width / 2, 50, "Gracias por tu compra. Stock Master © 2025")
 
     p.showPage()
     p.save()
 
     pdf_data = buffer.getvalue()
     buffer.close()
-    
     return pdf_data
-
 
 def enviar_factura_email(venta):
     """Envía la factura por email al cliente"""
@@ -136,7 +175,7 @@ Stock Master
         return False
 
 
-# ==================== VENTAS ====================
+# ==================== VENTAS CRUD ====================
 
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
@@ -232,11 +271,22 @@ def venta_crear(request):
             messages.error(request, "El monto recibido no es un valor válido.")
             return redirect('venta_crear')
 
-        if metodo_pago == "EFECTIVO" and monto_recibido < total_final:
-            messages.error(request, "El monto recibido es menor al total final.")
-            return redirect('venta_crear')
+        # Manejo de Efectivo
+        cambio = Decimal("0")
+        estado_pago = "pendiente"
 
-        cambio = (monto_recibido - total_final) if metodo_pago == "EFECTIVO" else Decimal("0")
+        if metodo_pago == "EFECTIVO":
+             if monto_recibido < total_final:
+                messages.error(request, "El monto recibido es menor al total final.")
+                return redirect('venta_crear')
+             cambio = monto_recibido - total_final
+             estado_pago = "aprobado" # Se asume pago aprobado en efectivo al crear
+
+        if metodo_pago == "MERCADOPAGO":
+            # Para MP el estado queda como 'pendiente' hasta el Back URL/IPN
+            monto_recibido = Decimal("0")
+            cambio = Decimal("0")
+            estado_pago = "pendiente"
 
         # Capturar correo del cliente
         email_cliente = request.POST.get("email_cliente")
@@ -252,7 +302,8 @@ def venta_crear(request):
             monto_recibido=monto_recibido,
             cambio=cambio,
             usuario=request.user,
-            email_cliente=email_cliente  # ⬅️ nuevo
+            email_cliente=email_cliente,
+            estado_pago=estado_pago # ⬅️ Se inicializa el estado de pago
         )
 
         # Guardar detalles + descontar stock
@@ -274,9 +325,15 @@ def venta_crear(request):
 
         messages.success(request, f"Venta #{venta.id} registrada correctamente")
         
-        # ✅ ENVIAR EMAIL INMEDIATAMENTE DESPUÉS DE CREAR LA VENTA
-        enviar_factura_email(venta)
+        # ✅ ENVIAR EMAIL INMEDIATAMENTE DESPUÉS DE CREAR LA VENTA 
+        if metodo_pago != "MERCADOPAGO" and estado_pago == "aprobado":
+             enviar_factura_email(venta)
         
+        # Si es Mercado Pago, se sugiere redirigir a generar el link de pago
+        if metodo_pago == "MERCADOPAGO":
+            # Redirigir a la vista de Mercado Pago
+            return redirect('generar_link_pago', venta_id=venta.id)
+
         return redirect('venta_detalle', venta_id=venta.id)
 
     # GET: Mostrar formulario vacío (sin productos estáticos)
@@ -328,8 +385,8 @@ def mis_ventas(request):
     return render(request, 'ventas/mis_ventas.html', {"ventas": ventas})
 
 
+# ==================== API / JSON ====================
 
-#mimimiim
 @login_required(login_url='login')
 @user_passes_test(lambda u: u.rol in ["ADMIN", "CAJERO"], login_url='login')
 @require_GET
@@ -388,3 +445,105 @@ def producto_json(request, producto_id):
         'descripcion': getattr(p, 'descripcion', '')  # si existe
     }
     return JsonResponse(data)
+
+
+# ==================== INTEGRACIÓN MERCADO PAGO ====================
+
+@login_required(login_url='login')
+def generar_link_pago(request, venta_id):
+    venta = get_object_or_404(Venta, id=venta_id)
+
+    sdk = mercadopago.SDK(settings.MERCADOPAGO_ACCESS_TOKEN)
+
+    preference_data = {
+        "items": [
+            {
+                "title": f"Venta #{venta.id} - Stock Master",
+                "quantity": 1,
+                "currency_id": "COP",
+                "unit_price": int(venta.total_final),
+            }
+        ],
+        "payer": {
+            "email": venta.email_cliente or venta.usuario.email
+        },
+        "back_urls": {
+            "success": request.build_absolute_uri(reverse("pago_exitoso", args=[venta.id])),
+            "failure": request.build_absolute_uri(reverse("pago_fallido", args=[venta.id])),
+            "pending": request.build_absolute_uri(reverse("pago_pendiente", args=[venta.id])),
+        }
+    }
+
+    preference_response = sdk.preference().create(preference_data)
+    preference = preference_response.get("response", {})
+
+    if "id" not in preference:
+        messages.error(request, f"Error creando preferencia: {preference}")
+        return redirect("venta_detalle", venta_id=venta.id)
+
+    venta.mp_preference_id = preference["id"]
+    venta.mp_link = preference.get("sandbox_init_point") or preference.get("init_point")
+    venta.save()
+
+    # Enviar correo al cliente
+    destinatario = venta.email_cliente or venta.usuario.email
+    asunto = f"Link de pago para tu compra en Stock Master"
+    mensaje = f"""
+Hola,
+
+Gracias por tu compra. Puedes realizar el pago de la venta #{venta.id} usando el siguiente enlace:
+
+{venta.mp_link}
+
+Una vez realizado el pago, recibirás la confirmación automáticamente.
+
+Saludos,
+Stock Master POS
+"""
+    send_mail(
+        subject=asunto,
+        message=mensaje,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[destinatario],
+        fail_silently=False,
+    )
+
+    messages.success(request, "✅ Link de pago enviado al cliente por correo.")
+    return redirect("venta_detalle", venta_id=venta.id)
+
+#  Vistas de resultado (Back URLs)
+
+def pago_exitoso(request, venta_id):
+    """Maneja la redirección de éxito de Mercado Pago."""
+    venta = get_object_or_404(Venta, id=venta_id)
+    # Solo actualiza si no estaba ya aprobado (ej. por IPN)
+    if venta.estado_pago != "aprobado":
+        venta.estado_pago = "aprobado"
+        venta.save()
+        messages.success(request, "Pago aprobado ✅. Venta marcada como pagada.")
+        enviar_factura_email(venta) # Enviar email al cliente
+    else:
+        messages.info(request, "La venta ya estaba marcada como aprobada.")
+
+    return redirect("venta_detalle", venta_id=venta.id)
+
+def pago_fallido(request, venta_id):
+    """Maneja la redirección de fallo de Mercado Pago."""
+    venta = get_object_or_404(Venta, id=venta_id)
+    if venta.estado_pago != "rechazado":
+        venta.estado_pago = "rechazado"
+        venta.save()
+        messages.error(request, "Pago rechazado ❌. Por favor, inténtelo de nuevo.")
+    
+    return redirect("venta_detalle", venta_id=venta.id)
+
+def pago_pendiente(request, venta_id):
+    """Maneja la redirección de pago pendiente de Mercado Pago."""
+    venta = get_object_or_404(Venta, id=venta_id)
+    # Se actualiza el estado, la confirmación final debería venir de un Webhook/IPN
+    if venta.estado_pago != "pendiente":
+        venta.estado_pago = "pendiente"
+        venta.save()
+        messages.warning(request, "Pago pendiente ⏳. El estado de la venta se actualizará una vez confirmado.")
+    
+    return redirect("venta_detalle", venta_id=venta.id)

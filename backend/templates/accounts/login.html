@@ -36,13 +36,20 @@
                     class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
             </div>
 
+            <!-- Enlace Recuperar Contraseña -->
+            <div class="text-right">
+                <a href="{% url 'forgot_password' %}"
+                   class="text-blue-600 hover:text-blue-800 font-semibold text-sm">
+                    ¿Olvidaste tu contraseña?
+                </a>
+            </div>
+
             <button type="submit"
                 class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
                 Ingresar
             </button>
         </form>
 
-        <!-- Mensaje para nuevos usuarios -->
         <div class="mt-6 pt-6 border-t border-gray-300 text-center">
             <p class="text-gray-600 mb-2">¿No tienes cuenta?</p>
             <a href="{% url 'register' %}" 
@@ -50,6 +57,7 @@
                 🚀 Crear una cuenta
             </a>
         </div>
+
     </div>
 </div>
 {% endblock %}

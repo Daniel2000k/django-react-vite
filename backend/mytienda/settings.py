@@ -1,5 +1,5 @@
 from pathlib import Path
-from decouple import config  
+from decouple import config  #python-decouple
 import dj_database_url 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -64,9 +64,6 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
-            'builtins': [
-                'inventario.templatetags.currency_filter',
-            ],
         },
     },
 ]
@@ -119,3 +116,6 @@ REST_FRAMEWORK = {
 
 # Configuración de manejo de errores 
 handler403 = "mi_tienda.views.error_403"
+
+#mercado
+MERCADOPAGO_ACCESS_TOKEN = "TEST-3132937583912024-112717-a32a729cb915f5d642895fe00c17e71c-673511878"  # token de prueba

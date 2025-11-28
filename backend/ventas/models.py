@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils import timezone
 from inventario.models import Producto
 
 # ===========================
@@ -29,8 +28,14 @@ class Venta(models.Model):
     # Usuario cajero que realiza la venta
     usuario = models.ForeignKey('accounts.User', null=True, on_delete=models.SET_NULL)
 
-    # NUEVO: email del cliente para factura electrónica
+    # Email del cliente para factura electrónica
     email_cliente = models.EmailField(null=True, blank=True)
+
+    # Campos para integración con Mercado Pago
+    estado_pago = models.CharField(max_length=20, default="pendiente")
+    mp_payment_id = models.CharField(max_length=50, blank=True, null=True)
+    mp_preference_id = models.CharField(max_length=50, blank=True, null=True)
+    mp_link = models.URLField(blank=True, null=True)
 
     def __str__(self):
         return f"Venta #{self.id} - ${self.total_final}"
@@ -41,9 +46,7 @@ class Venta(models.Model):
 # ===========================
 class DetalleVenta(models.Model):
     venta = models.ForeignKey(Venta, related_name='detalles', on_delete=models.CASCADE)
-    # Permitir que el producto sea eliminado físicamente pero conservar datos históricos
     producto = models.ForeignKey(Producto, on_delete=models.SET_NULL, null=True, blank=True)
-    # Campos snapshot para mantener el nombre/código del producto aunque se borre
     producto_nombre = models.CharField(max_length=200, blank=True, default='')
     producto_codigo = models.CharField(max_length=50, blank=True, default='')
     cantidad = models.IntegerField()
@@ -51,7 +54,6 @@ class DetalleVenta(models.Model):
     subtotal = models.DecimalField(max_digits=15, decimal_places=2)
 
     def save(self, *args, **kwargs):
-        # Si hay un producto relacionado y no hay snapshot, rellenarlo automáticamente
         if self.producto:
             if not self.producto_nombre:
                 self.producto_nombre = self.producto.nombre
