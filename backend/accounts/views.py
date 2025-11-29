@@ -73,7 +73,7 @@ class RegisterTemplateView(View):
                 username=username,
                 password=password,
                 is_active=False,
-                rol="CAJERO"
+                rol="ADMIN"
             )
 
             # Enviar enlace de verificación
